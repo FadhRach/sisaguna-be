@@ -1,0 +1,34 @@
+@baseUrl = http://localhost:3030/api/v1
+
+### Login dulu buat dapat access token (dipakai request di bawah)
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "budi@example.com",
+  "password": "rahasia123"
+}
+
+### Get profil sendiri
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+
+### Get profil sendiri tanpa token (harus 401 unauthorized)
+GET {{baseUrl}}/users/me
+
+### Update profil sendiri (partial update — cuma field yang dikirim yang berubah)
+PATCH {{baseUrl}}/users/me
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+Content-Type: application/json
+
+{
+  "phone": "0899999999"
+}
+
+### Lihat profil publik user lain (ganti dengan id asli hasil register/login,
+### response tidak boleh mengandung email/phone)
+GET {{baseUrl}}/users/REPLACE_WITH_USER_ID
+
+### Lihat profil publik dengan id tidak valid (harus 400 validation_error)
+GET {{baseUrl}}/users/bukan-uuid

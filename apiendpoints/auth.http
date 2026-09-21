@@ -1,0 +1,82 @@
+@baseUrl = http://localhost:3030/api/v1
+
+### Register — mitra usaha
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Budi Santoso",
+  "email": "budi@example.com",
+  "phone": "08123456789",
+  "password": "rahasia123",
+  "roles": ["mitra_usaha"],
+  "business_name": "Warung Budi"
+}
+
+### Register — penerima
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Sari Dewi",
+  "email": "sari@example.com",
+  "phone": "08199999999",
+  "password": "rahasia123",
+  "roles": ["penerima"]
+}
+
+### Register — role tidak valid (harus 400 invalid_role)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Test",
+  "email": "invalidrole@example.com",
+  "phone": "08111",
+  "password": "rahasia123",
+  "roles": ["bukan_role_valid"]
+}
+
+### Login (simpan hasilnya, dipakai request refresh & logout di bawah)
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "budi@example.com",
+  "password": "rahasia123"
+}
+
+### Login — password salah (harus 401 invalid_credentials)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "budi@example.com",
+  "password": "salah"
+}
+
+### Refresh access token
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refresh_token": "{{login.response.body.$.data.refresh_token}}"
+}
+
+### Logout (revoke refresh token, butuh access token)
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+Content-Type: application/json
+
+{
+  "refresh_token": "{{login.response.body.$.data.refresh_token}}"
+}
+
+### Refresh pakai token yang sudah di-logout (harus 401 invalid_refresh_token)
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refresh_token": "{{login.response.body.$.data.refresh_token}}"
+}

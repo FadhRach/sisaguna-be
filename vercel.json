@@ -1,0 +1,6 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/api/v1/users/:id((?!me$).+)", "destination": "/api/v1/users/detail" }
+  ]
+}

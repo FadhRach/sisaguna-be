@@ -1,0 +1,17 @@
+# Binaries
+/bin/
+*.exe
+*.test
+
+# Env
+.env
+.env.local
+
+# Vercel
+.vercel
+
+# CLAUDE
+CLAUDE.md
+
+# OS
+.DS_Store
