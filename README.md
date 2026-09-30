@@ -1,17 +1,17 @@
 # SisaGuna Backend
 
 REST API untuk SisaGuna — marketplace redistribusi makanan berbasis lokasi. Ditulis
-di Go, deploy serverless ke Vercel, database Postgres (Supabase + PostGIS).
+di Go (Fiber), deploy sebagai container Docker ke server AWS, database Postgres +
+PostGIS self-hosted.
 
 Detail arsitektur, batasan kritis, dan skema database lengkap ada di
 [`CLAUDE.md`](./CLAUDE.md). README ini fokus ke cara menjalankan & test proyeknya.
 
 ## Prasyarat
 
-- Go 1.27+ (cek `go version`)
-- Postgres (lokal, atau langsung pakai Supabase — lihat [Local vs Production Database](#local-vs-production-database))
+- Docker + Docker Compose
+- Go 1.27+ (opsional, cuma dibutuhkan buat jalan lokal tanpa Docker)
 - [`golang-migrate` CLI](https://github.com/golang-migrate/migrate) untuk menjalankan migrasi
-- (Opsional) [Vercel CLI](https://vercel.com/docs/cli) kalau mau coba `vercel dev` / deploy
 - (Opsional) Extension **REST Client** di VS Code untuk test API lewat folder `apiendpoints/`
 
 ## Setup Awal
@@ -19,43 +19,42 @@ Detail arsitektur, batasan kritis, dan skema database lengkap ada di
 ```bash
 git clone <repo-ini>
 cd SisaGuna-be
-go mod download
 cp .env.example .env
 ```
 
-Isi `.env` — minimal `DATABASE_URL`, `MIGRATION_DATABASE_URL`, dan `JWT_SECRET`
-wajib diisi (lihat tabel di CLAUDE.md untuk penjelasan tiap variabel). Kalau pakai
-Postgres lokal, isian paling sederhana:
+Isi `.env` — minimal `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `DATABASE_URL`,
+dan `JWT_SECRET` wajib diisi (lihat tabel di CLAUDE.md untuk penjelasan tiap variabel).
 
+## Menjalankan dengan Docker (direkomendasikan)
+
+```bash
+docker compose up --build
 ```
-DATABASE_URL=postgresql://postgres@localhost:5432/sisaguna?sslmode=disable
-MIGRATION_DATABASE_URL=postgresql://postgres@localhost:5432/sisaguna?sslmode=disable
-JWT_SECRET=ganti-dengan-random-string-yang-panjang
-```
+
+Ini menjalankan dua service: `app` (backend Go) dan `postgres` (image `postgis/postgis`,
+extension PostGIS sudah bawaan, tidak perlu install manual). Server jalan di
+`http://localhost:$PORT` (default `3030`), semua endpoint di bawah prefix `/api/v1`.
+
+Kalau kamu sudah punya Postgres lokal sendiri yang jalan di port 5432, ganti port
+mapping service `postgres` di `docker-compose.yml` (mis. `"5433:5432"`) supaya tidak
+bentrok.
 
 ## Menjalankan Migrasi
 
-```bash
-createdb sisaguna   # sekali saja, kalau database belum ada
-migrate -database "$MIGRATION_DATABASE_URL" -path database/migrations up
-```
-
-Tabel `listings` butuh extension **PostGIS**. Di macOS: `brew install postgis`
-lalu `CREATE EXTENSION IF NOT EXISTS postgis;` akan jalan otomatis lewat migrasi.
-Kalau belum sempat install PostGIS, migrasi `users`/`refresh_tokens` tetap bisa
-jalan duluan (nomor `000001`/`000002`) — cukup untuk fitur auth & user yang
-sudah dibangun.
-
-## Menjalankan Secara Lokal
+Postgres di docker-compose port-nya di-map ke host, jadi `migrate` CLI dari host bisa
+langsung connect:
 
 ```bash
-go run ./cmd/main.go
-# atau, untuk meniru environment serverless Vercel:
-vercel dev
+migrate -database "$DATABASE_URL" -path database/migrations up
 ```
 
-Server jalan di `http://localhost:$PORT` (default `3030`), semua endpoint di
-bawah prefix `/api/v1`.
+## Menjalankan Secara Lokal (tanpa Docker)
+
+Butuh Postgres + PostGIS sendiri yang sudah jalan, lalu:
+
+```bash
+go run ./main.go
+```
 
 ## Testing API
 
@@ -73,39 +72,40 @@ go build ./...
 go test ./...
 ```
 
-## Deploy ke Vercel
+## Deploy ke AWS
+
+Mekanisme orkestrasi (ECS, EC2, Lightsail, dst) belum ditentukan di sesi ini — bagian
+ini sengaja digeneralisasi, bukan diasumsikan. Alur dasarnya:
 
 ```bash
-vercel                 # link project & deploy preview
-vercel env add ...     # set DATABASE_URL, JWT_SECRET, dst di environment Vercel
-vercel --prod           # deploy production
+docker build -t sisaguna-be .
+# push ke registry (ECR atau lainnya), lalu jalankan di server AWS yang sudah ada
+docker run -p 3030:3030 --env-file .env sisaguna-be
 ```
 
-Vercel otomatis mendeteksi tiap file di `/api` sebagai satu function terpisah
-(bukan mode "Go Framework Preset" yang butuh server persisten) — lihat bagian
-Architecture di CLAUDE.md untuk detail.
+Pastikan `DATABASE_URL` di environment production diarahkan ke Postgres yang benar
+di infrastruktur AWS kamu (bisa container terpisah, bisa RDS, dll — tidak diasumsikan
+di sini).
 
 ## Local vs Production Database
 
-Boleh, dan disarankan: **Postgres lokal untuk development, Supabase Postgres untuk
-production.** Kode aplikasi cuma baca `DATABASE_URL` dari environment variable —
-tidak ada kode yang hardcode ke Supabase, jadi tinggal ganti connection string per
-environment:
+`DATABASE_URL` adalah satu-satunya env var yang dibaca aplikasi untuk koneksi DB —
+tidak ada kode yang hardcode ke provider tertentu. Ganti connection string-nya sesuai
+environment, tidak ada perubahan kode yang dibutuhkan:
 
 | Environment | `DATABASE_URL` mengarah ke |
 | --- | --- |
-| Lokal (`.env`) | Postgres lokal, port 5432 biasa |
-| Production (env var Vercel) | Supabase Supavisor pooler, port 6543 |
+| Docker Compose (dev) | Service `postgres` di network internal (`postgres:5432`) — diatur otomatis lewat `docker-compose.yml` |
+| Lokal tanpa Docker | Postgres yang kamu jalankan sendiri, biasanya `localhost:5432` |
+| Production (AWS) | Tergantung setup — container Postgres lain, RDS, dst |
 
-Beberapa catatan:
+## Follow-up yang belum diputuskan
 
-- Konfigurasi `PreferSimpleProtocol`/`PrepareStmt:false` di `internal/db` (wajib
-  untuk Supavisor transaction mode) tidak mengganggu Postgres biasa — sudah
-  diverifikasi lewat test concurrent request saat awal development.
-- File migrasi di `database/migrations` sama persis dipakai untuk lokal maupun
-  Supabase, asal extension yang sama (`pgcrypto`, `postgis`) terpasang di keduanya.
-- Dev di lokal jauh lebih cepat: tidak kena latency jaringan ke Supabase, tidak
-  kena limit koneksi free tier, dan tidak kena auto-pause Supabase setelah 7 hari
-  idle.
-- Sebelum deploy, tetap jalankan migrasi yang sama ke Supabase (`MIGRATION_DATABASE_URL`
-  di environment Vercel diarahkan ke koneksi direct/session mode Supabase, port 5432).
+Dicatat di sini biar tidak lupa, bukan bagian dari setup yang sudah selesai:
+
+- **Mekanisme pemicu cron** (`/internal/cron/*`, lihat CLAUDE.md batasan kritis #6) —
+  belum ada cron job berjalan di sisi AWS (dulu pakai Vercel Cron). Kandidat: sidecar
+  container penjadwal (mis. Ofelia) yang `curl` endpoint-nya, AWS EventBridge, atau
+  ticker di dalam aplikasi sendiri.
+- **Penyimpanan foto listing** — dulu pakai Vercel Blob (`BLOB_READ_WRITE_TOKEN`), sudah
+  tidak relevan di AWS. Kemungkinan besar S3, belum diputuskan.

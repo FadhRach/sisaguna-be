@@ -1,0 +1,7 @@
+.git
+docs/
+apiendpoints/
+.env
+.env.local
+*.md
+bin/

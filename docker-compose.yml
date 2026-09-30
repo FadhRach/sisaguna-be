@@ -1,0 +1,47 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      # Override DATABASE_URL host di .env supaya app connect ke Postgres
+      # lewat network internal Docker, bukan port host.
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+    ports:
+      - "${PORT:-3030}:${PORT:-3030}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - sisaguna-net
+    restart: unless-stopped
+
+  postgres:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      # Di-map ke host supaya `migrate` CLI / psql lokal bisa akses langsung.
+      # Kalau sudah ada Postgres lokal di 5432, ganti jadi "5433:5432".
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sisaguna-net
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+
+networks:
+  sisaguna-net:
+    driver: bridge
