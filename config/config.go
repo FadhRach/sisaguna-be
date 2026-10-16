@@ -11,6 +11,10 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// AppConfig adalah config yang sudah di-Load, dibaca package lain yang butuh
+// (niru pola reference project: config.AppConfig).
+var AppConfig *Config
+
 // Config menampung seluruh environment variable yang dipakai aplikasi.
 type Config struct {
 	DatabaseURL        string
@@ -43,6 +47,7 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("config load: JWT_SECRET wajib diisi")
 	}
 
+	AppConfig = cfg
 	return cfg, nil
 }
 

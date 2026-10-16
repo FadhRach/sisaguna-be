@@ -13,7 +13,7 @@ import (
 func requireUserID(c *fiber.Ctx) (uuid.UUID, error) {
 	userID, ok := c.Locals(middleware.LocalsKeyUserID).(uuid.UUID)
 	if !ok {
-		return uuid.Nil, utils.WriteUnauthorized(c, "token tidak mengandung user id")
+		return uuid.Nil, utils.Unauthorized(c, "Autentikasi gagal", "token tidak mengandung user id")
 	}
 	return userID, nil
 }

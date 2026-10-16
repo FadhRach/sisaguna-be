@@ -22,12 +22,12 @@ func RequireAuth(jwtSecret string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		token, ok := strings.CutPrefix(c.Get("Authorization"), "Bearer ")
 		if !ok || token == "" {
-			return utils.WriteUnauthorized(c, "header Authorization Bearer token wajib diisi")
+			return utils.Unauthorized(c, "Autentikasi gagal", "header Authorization Bearer token wajib diisi")
 		}
 
 		claims, err := utils.ParseToken(jwtSecret, token)
 		if err != nil {
-			return utils.WriteUnauthorized(c, "token tidak valid atau kedaluwarsa")
+			return utils.Unauthorized(c, "Autentikasi gagal", "token tidak valid atau kedaluwarsa")
 		}
 
 		c.Locals(LocalsKeyUserID, claims.UserID)

@@ -9,21 +9,29 @@ import (
 )
 
 // Setup mendaftarkan semua route di bawah prefix /api/v1 (batasan kritis #4 di
-// CLAUDE.md). Fiber otomatis resolve segmen statis ("/me") sebelum segmen
-// dinamis ("/:id"), jadi tidak perlu rewrite khusus untuk disambiguasi.
+// CLAUDE.md), satu function per resource biar gampang dibaca dan gampang
+// nambah resource baru (listings, reservations, dst) nanti.
 func Setup(app *fiber.App, authController *controllers.AuthController, userController *controllers.UserController, jwtSecret string) {
 	requireAuth := middleware.RequireAuth(jwtSecret)
-
 	api := app.Group("/api/v1")
 
-	auth := api.Group("/auth")
-	auth.Post("/register", authController.Register)
-	auth.Post("/login", authController.Login)
-	auth.Post("/refresh", authController.Refresh)
-	auth.Post("/logout", requireAuth, authController.Logout)
+	setupAuthRoutes(api, authController, requireAuth)
+	setupUserRoutes(api, userController, requireAuth)
+}
 
-	users := api.Group("/users")
-	users.Get("/me", requireAuth, userController.GetMe)
-	users.Patch("/me", requireAuth, userController.UpdateMe)
-	users.Get("/:id", userController.GetByID)
+func setupAuthRoutes(router fiber.Router, controller *controllers.AuthController, requireAuth fiber.Handler) {
+	auth := router.Group("/auth")
+	auth.Post("/register", controller.Register)
+	auth.Post("/login", controller.Login)
+	auth.Post("/refresh", controller.Refresh)
+	auth.Post("/logout", requireAuth, controller.Logout)
+}
+
+// Fiber otomatis resolve segmen statis ("/me") sebelum segmen dinamis
+// ("/:id"), jadi "/users/:id" tidak akan "menelan" request ke "/users/me".
+func setupUserRoutes(router fiber.Router, controller *controllers.UserController, requireAuth fiber.Handler) {
+	users := router.Group("/users")
+	users.Get("/me", requireAuth, controller.GetMe)
+	users.Patch("/me", requireAuth, controller.UpdateMe)
+	users.Get("/:id", controller.GetByID)
 }

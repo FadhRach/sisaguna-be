@@ -18,13 +18,12 @@ func main() {
 		log.Fatalf("main: %v", err)
 	}
 
-	db, err := config.Connect(cfg)
-	if err != nil {
+	if _, err := config.Connect(cfg); err != nil {
 		log.Fatalf("main: %v", err)
 	}
 
-	userRepo := repositories.NewUserRepository(db)
-	refreshTokenRepo := repositories.NewRefreshTokenRepository(db)
+	userRepo := repositories.NewUserRepository()
+	refreshTokenRepo := repositories.NewRefreshTokenRepository()
 	authService := services.NewAuthService(userRepo, refreshTokenRepo, cfg.JWTSecret, cfg.JWTAccessTokenTTL, cfg.JWTRefreshTokenTTL)
 	userService := services.NewUserService(userRepo)
 	authController := controllers.NewAuthController(authService)

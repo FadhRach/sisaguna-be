@@ -1,24 +1,14 @@
 package utils
 
-import (
-	"fmt"
+import "golang.org/x/crypto/bcrypt"
 
-	"golang.org/x/crypto/bcrypt"
-)
-
-// HashPassword menghasilkan bcrypt hash dari password plain text.
+// HashPassword bikin bcrypt hash dari password plain text.
 func HashPassword(password string) (string, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return "", fmt.Errorf("hash password: %w", err)
-	}
-	return string(hash), nil
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return string(bytes), err
 }
 
-// ComparePassword mengembalikan error kalau password tidak cocok dengan hash.
+// ComparePassword balikin error kalau password tidak cocok dengan hash.
 func ComparePassword(hash, password string) error {
-	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)); err != nil {
-		return fmt.Errorf("compare password: %w", err)
-	}
-	return nil
+	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 }

@@ -27,9 +27,9 @@ func (h *UserController) GetMe(c *fiber.Ctx) error {
 
 	user, err := h.userService.GetProfile(c.Context(), userID)
 	if err != nil {
-		return writeUserServiceError(c, err)
+		return writeUserServiceError(c, "Ambil profil", err)
 	}
-	return utils.WriteOK(c, user)
+	return utils.Success(c, "Profil berhasil diambil", user)
 }
 
 type updateMeRequest struct {
@@ -47,7 +47,7 @@ func (h *UserController) UpdateMe(c *fiber.Ctx) error {
 
 	var req updateMeRequest
 	if err := c.BodyParser(&req); err != nil {
-		return utils.WriteBadRequest(c, "payload update profil tidak valid")
+		return utils.BadRequest(c, "Update profil gagal", "payload update profil tidak valid")
 	}
 
 	user, err := h.userService.UpdateProfile(c.Context(), userID, services.UpdateProfileInput{
@@ -56,28 +56,31 @@ func (h *UserController) UpdateMe(c *fiber.Ctx) error {
 		BusinessName: req.BusinessName,
 	})
 	if err != nil {
-		return writeUserServiceError(c, err)
+		return writeUserServiceError(c, "Update profil", err)
 	}
-	return utils.WriteOK(c, user)
+	return utils.Success(c, "Profil berhasil diperbarui", user)
 }
 
 // GetByID menangani GET /users/:id, profil publik tanpa perlu login.
 func (h *UserController) GetByID(c *fiber.Ctx) error {
 	userID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return utils.WriteBadRequest(c, "id user tidak valid")
+		return utils.BadRequest(c, "Ambil profil publik gagal", "id user tidak valid")
 	}
 
 	profile, err := h.userService.GetPublicProfile(c.Context(), userID)
 	if err != nil {
-		return writeUserServiceError(c, err)
+		return writeUserServiceError(c, "Ambil profil publik", err)
 	}
-	return utils.WriteOK(c, profile)
+	return utils.Success(c, "Profil publik berhasil diambil", profile)
 }
 
-func writeUserServiceError(c *fiber.Ctx, err error) error {
+// writeUserServiceError memetakan error dari UserService ke response HTTP yang
+// sesuai, pakai action buat message kontekstual (lihat writeAuthServiceError).
+func writeUserServiceError(c *fiber.Ctx, action string, err error) error {
+	message := action + " gagal"
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return utils.WriteNotFound(c, "user_not_found", "user tidak ditemukan")
+		return utils.NotFound(c, message, "user tidak ditemukan")
 	}
-	return utils.WriteInternalError(c)
+	return utils.InternalServerError(c, message, err.Error())
 }

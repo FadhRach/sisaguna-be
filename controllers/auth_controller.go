@@ -32,11 +32,11 @@ type registerRequest struct {
 func (h *AuthController) Register(c *fiber.Ctx) error {
 	var req registerRequest
 	if err := c.BodyParser(&req); err != nil {
-		return utils.WriteBadRequest(c, "payload register tidak valid")
+		return utils.BadRequest(c, "Registrasi gagal", "payload register tidak valid")
 	}
 
 	if req.Name == "" || req.Email == "" || req.Phone == "" || req.Password == "" {
-		return utils.WriteBadRequest(c, "name, email, phone, dan password wajib diisi")
+		return utils.BadRequest(c, "Registrasi gagal", "name, email, phone, dan password wajib diisi")
 	}
 
 	user, err := h.authService.Register(c.Context(), services.RegisterInput{
@@ -48,10 +48,10 @@ func (h *AuthController) Register(c *fiber.Ctx) error {
 		BusinessName: req.BusinessName,
 	})
 	if err != nil {
-		return writeAuthServiceError(c, err)
+		return writeAuthServiceError(c, "Registrasi", err)
 	}
 
-	return utils.WriteCreated(c, user)
+	return utils.Created(c, "Registrasi berhasil", user)
 }
 
 type loginRequest struct {
@@ -70,19 +70,19 @@ type loginResponse struct {
 func (h *AuthController) Login(c *fiber.Ctx) error {
 	var req loginRequest
 	if err := c.BodyParser(&req); err != nil {
-		return utils.WriteBadRequest(c, "payload login tidak valid")
+		return utils.BadRequest(c, "Login gagal", "payload login tidak valid")
 	}
 
 	if req.Email == "" || req.Password == "" {
-		return utils.WriteBadRequest(c, "email dan password wajib diisi")
+		return utils.BadRequest(c, "Login gagal", "email dan password wajib diisi")
 	}
 
 	result, err := h.authService.Login(c.Context(), services.LoginInput{Email: req.Email, Password: req.Password})
 	if err != nil {
-		return writeAuthServiceError(c, err)
+		return writeAuthServiceError(c, "Login", err)
 	}
 
-	return utils.WriteOK(c, loginResponse{
+	return utils.Success(c, "Login berhasil", loginResponse{
 		AccessToken:  result.AccessToken,
 		RefreshToken: result.RefreshToken,
 		TokenType:    "Bearer",
@@ -104,15 +104,15 @@ type refreshResponse struct {
 func (h *AuthController) Refresh(c *fiber.Ctx) error {
 	var req refreshRequest
 	if err := c.BodyParser(&req); err != nil || req.RefreshToken == "" {
-		return utils.WriteBadRequest(c, "refresh_token wajib diisi")
+		return utils.BadRequest(c, "Refresh token gagal", "refresh_token wajib diisi")
 	}
 
 	result, err := h.authService.Refresh(c.Context(), req.RefreshToken)
 	if err != nil {
-		return writeAuthServiceError(c, err)
+		return writeAuthServiceError(c, "Refresh token", err)
 	}
 
-	return utils.WriteOK(c, refreshResponse{
+	return utils.Success(c, "Refresh token berhasil", refreshResponse{
 		AccessToken: result.AccessToken,
 		TokenType:   "Bearer",
 		ExpiresAt:   result.ExpiresAt.UTC().Format(time.RFC3339),
@@ -133,27 +133,29 @@ func (h *AuthController) Logout(c *fiber.Ctx) error {
 
 	var req logoutRequest
 	if err := c.BodyParser(&req); err != nil || req.RefreshToken == "" {
-		return utils.WriteBadRequest(c, "refresh_token wajib diisi")
+		return utils.BadRequest(c, "Logout gagal", "refresh_token wajib diisi")
 	}
 
 	if err := h.authService.Logout(c.Context(), userID, req.RefreshToken); err != nil {
-		return writeAuthServiceError(c, err)
+		return writeAuthServiceError(c, "Logout", err)
 	}
 
-	return utils.WriteNoContent(c)
+	return utils.NoContent(c)
 }
 
-func writeAuthServiceError(c *fiber.Ctx, err error) error {
+// writeAuthServiceError memetakan error dari AuthService ke response HTTP yang
+// sesuai. action dipakai buat bikin message kontekstual ("Registrasi gagal",
+// "Login gagal", dst) tanpa nulis ulang switch-nya di tiap method.
+func writeAuthServiceError(c *fiber.Ctx, action string, err error) error {
+	message := action + " gagal"
 	switch {
 	case errors.Is(err, services.ErrEmailTaken):
-		return utils.WriteConflict(c, "email_taken", err.Error())
+		return utils.Conflict(c, message, err.Error())
 	case errors.Is(err, services.ErrInvalidRole):
-		return utils.WriteBadRequest(c, err.Error())
-	case errors.Is(err, services.ErrInvalidCredentials):
-		return utils.WriteError(c, fiber.StatusUnauthorized, "invalid_credentials", err.Error())
-	case errors.Is(err, services.ErrInvalidRefreshToken):
-		return utils.WriteError(c, fiber.StatusUnauthorized, "invalid_refresh_token", err.Error())
+		return utils.BadRequest(c, message, err.Error())
+	case errors.Is(err, services.ErrInvalidCredentials), errors.Is(err, services.ErrInvalidRefreshToken):
+		return utils.Unauthorized(c, message, err.Error())
 	default:
-		return utils.WriteInternalError(c)
+		return utils.InternalServerError(c, message, err.Error())
 	}
 }
