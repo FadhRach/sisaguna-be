@@ -1,0 +1,23 @@
+# {$DOMAIN} mis. api.sisaguna.id; HTTPS otomatis lewat Let's Encrypt.
+{$DOMAIN} {
+	encode gzip
+
+	# Foto publik: nama file = hash isi, aman di-cache selamanya.
+	handle_path /media/* {
+		root * /srv/media/public
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	# Folder private tidak pernah di-mount ke container caddy.
+	handle /api/v1/* {
+		reverse_proxy api:3030
+	}
+	handle /ws {
+		reverse_proxy api:3030
+	}
+	handle /healthz {
+		reverse_proxy api:3030
+	}
+	respond 404
+}

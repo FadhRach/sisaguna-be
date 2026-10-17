@@ -1,0 +1,47 @@
+# Setelah pesanan selesai: ulasan, komplain, dampak, favorit, preferensi. Jalankan alur di checkout.http + mitra.http dulu.
+@baseUrl = http://localhost:3030/api/v1
+@orderId = ISI_ORDER_ID_YANG_COMPLETED
+@merchantId = 5a5a5a5a-1111-4222-8333-444455556666 # ganti dengan id toko dari /home
+
+### Login pembeli
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "email": "budi.santoso@gmail.com", "password": "Password123!" }
+
+### Beri ulasan (sekali per order, maks 7 hari)
+POST {{baseUrl}}/orders/{{orderId}}/review
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+Content-Type: application/json
+
+{ "stars": 5, "tags": ["Porsi pas"], "comment": "Enak!" }
+
+### Ulasan toko (publik)
+GET {{baseUrl}}/merchants/{{merchantId}}/reviews
+
+### Komplain (maks 24 jam, sekali per order)
+POST {{baseUrl}}/orders/{{orderId}}/complaint
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+Content-Type: application/json
+
+{ "reason": "not_fresh", "detail": "Ayamnya terasa kurang segar." }
+
+### Dampak
+GET {{baseUrl}}/me/impact
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+
+### Toko favorit
+PUT {{baseUrl}}/me/saved-merchants/{{merchantId}}
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+
+###
+GET {{baseUrl}}/me/saved-merchants?lat=-6.2433&lng=106.7989
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+
+### Preferensi notifikasi (PUT mengganti semuanya)
+PUT {{baseUrl}}/me/notification-prefs
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+Content-Type: application/json
+
+{ "enabled": true, "pickup": true, "order": true, "merchant": true, "promo": true, "impact": false }

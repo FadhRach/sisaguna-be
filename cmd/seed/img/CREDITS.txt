@@ -1,0 +1,40 @@
+Photos from Wikimedia Commons (CC BY / CC BY-SA / public domain), cropped to 4:3. Search commons.wikimedia.org for the source file name to see author + licence. ayam_goreng.jpg is the Figma 'Ayam olie' photo.
+roti_tawar.jpg <- File:Weißbrot-1.jpg
+donat.jpg <- File:Deliciously crafted frosted donuts ready for customers at a bakery in the morning.jpg
+puding_cheesecake.jpg <- File:Flum1.JPG
+bubur_ayam.jpg <- File:Bubur ayam chicken porridge.JPG
+pisang_goreng.jpg <- File:Pisang goreng fried banana.JPG
+sayur_pakan.jpg <- File:Vick's garden and floral guide (16377331637).jpg
+ampas_tahu.jpg <- File:Okara (soybean pulp).jpg
+roti_kering_pakan.jpg <- File:Lablebi Tunisian dish.jpg
+ampas_kopi.jpg <- File:Coarsely grounded coffee beans in white bowl with intact roasted bean.png
+kulit_buah.jpg <- File:Preparing fresh fruit for a smoothie in a bright kitchen space with colorful ingredients spread across a countertop.jpg
+cangkang_telur.jpg <- File:Massospondylus eggshell SEM.png
+banner_warung.jpg <- File:Warung Makan Di Kawedusan Kebumen Jateng Indonesia.jpg
+banner_bakery.jpg <- File:Bread on display in Belfast.jpg
+banner_farm.jpg <- File:Farm goat feeding.jpg
+banner_kompos.jpg <- File:NYC Compost Project.jpg
+banner_dapur.jpg <- File:People Cooking in the Kitchen 11.jpg
+martabak.jpg <- File:Terang Bulan roasted chicken.JPG
+gado_gado.jpg <- File:Gado-gado in Jakarta.JPG
+soto_ayam.jpg <- File:Soto Ayam Kudus.jpg
+rendang.jpg <- File:Lamb rendang.jpg
+sate_ayam.jpg <- File:Warung Sate H. Faqih - Sate Ayam 172308.jpg
+bakso.jpg <- File:Bakso Indonesian Meatball Soup from Solo.jpg
+klepon.jpg <- File:Klepon Khas Tulungagung.jpg
+risoles.jpg <- File:Risoles jumbo.jpg
+brownies.jpg <- File:Brownies 2010.jpg
+bolu_pandan.jpg <- File:Pandan Cake.jpg
+pizza.jpg <- File:Slice House pizza (38501729515).jpg
+salad_buah.jpg <- File:A bowl of fruits salad with avocado.jpg
+onde_onde.jpg <- File:Onde-Onde Wijen.jpg
+nasi_goreng.jpg <- File:Nasi Goreng Ikan Asin.jpg
+ampas_kelapa.jpg <- File:Grated Coconut - Howrah 2013-10-18 3544.JPG
+daun_kering.jpg <- File:Nasu 20210724 113015.jpg
+ampas_teh.jpg <- File:Zhu-Ye-Qing-Tea-03.jpg
+kulit_pisang.jpg <- File:Banane-A-05 cropped.jpg
+couriers/ (brand marks, shown only to identify the third-party courier option; trademarks of their owners)
+couriers/courier_gosend.png <- File:Gojek logo 2022.svg (mark only)
+couriers/courier_grab.png <- File:Grab Logo.svg
+couriers/courier_lalamove.png <- File:Lalamove Logo.png (mark only)
+couriers/courier_shopee.png <- File:Shopee logo.svg (mark only)

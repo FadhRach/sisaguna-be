@@ -1,0 +1,74 @@
+# Alur pembeli: voucher, quote, pesan, batal, riwayat. Akun: budi.santoso@gmail.com / Password123!
+@baseUrl = http://localhost:3030/api/v1
+@lat = -6.2433
+@lng = 106.7989
+
+### Login pembeli
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "email": "budi.santoso@gmail.com", "password": "Password123!" }
+
+### Ambil listing dari home
+# @name home
+GET {{baseUrl}}/home?lat={{lat}}&lng={{lng}}&tab=human
+
+### Voucher saya
+GET {{baseUrl}}/me/vouchers
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+
+### Klaim voucher (204; kedua kali 409)
+POST {{baseUrl}}/vouchers/SISAGUNA10/claim
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+
+### Quote (tidak mengubah data). Ganti listing_id/merchant_id kalau perlu.
+# @name quote
+POST {{baseUrl}}/checkout/quote
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+Content-Type: application/json
+
+{
+  "merchant_id": "{{home.response.body.$.data.nearby[0].merchant.id}}",
+  "lines": [{ "listing_id": "{{home.response.body.$.data.nearby[0].id}}", "quantity": 2 }],
+  "voucher_code": "SISAGUNA10"
+}
+
+### Buat pesanan. Idempotency-Key wajib; kirim ulang dengan key yang sama = order yang sama (200).
+# @name order
+POST {{baseUrl}}/orders
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+Idempotency-Key: coba-order-001
+Content-Type: application/json
+
+{
+  "merchant_id": "{{home.response.body.$.data.nearby[0].merchant.id}}",
+  "lines": [{ "listing_id": "{{home.response.body.$.data.nearby[0].id}}", "quantity": 2 }],
+  "voucher_code": "SISAGUNA10",
+  "payment_kind": "cash",
+  "note": "Tanpa sambal",
+  "expected_total": {{quote.response.body.$.data.total}}
+}
+
+### Detail pesanan (pembeli melihat kode pickup)
+GET {{baseUrl}}/orders/{{order.response.body.$.data.id}}
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+
+### Pesanan berjalan / riwayat
+GET {{baseUrl}}/me/orders?tab=ongoing
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+
+###
+GET {{baseUrl}}/me/orders?tab=history&filter=all&limit=2
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+
+### Batalkan (hanya saat ready dan sebelum pickup_by)
+POST {{baseUrl}}/orders/{{order.response.body.$.data.id}}/cancel
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+Content-Type: application/json
+
+{ "reason": "Berubah pikiran" }
+
+### Notifikasi
+GET {{baseUrl}}/me/notifications?limit=10
+Authorization: Bearer {{login.response.body.$.data.access_token}}

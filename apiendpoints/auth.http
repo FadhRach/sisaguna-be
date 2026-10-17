@@ -1,62 +1,39 @@
 @baseUrl = http://localhost:3030/api/v1
 
-### Register — mitra usaha
+### Register (langsung mendapat token)
+# @name register
 POST {{baseUrl}}/auth/register
 Content-Type: application/json
 
 {
   "name": "Budi Santoso",
-  "email": "budi@example.com",
-  "phone": "08123456789",
-  "password": "rahasia123",
-  "roles": ["mitra_usaha"],
-  "business_name": "Warung Budi"
+  "email": "budi.baru@example.com",
+  "phone": "81234567890",
+  "password": "Password123!",
+  "account_type": "buyer"
 }
 
-### Register — penerima
-POST {{baseUrl}}/auth/register
-Content-Type: application/json
-
-{
-  "name": "Sari Dewi",
-  "email": "sari@example.com",
-  "phone": "08199999999",
-  "password": "rahasia123",
-  "roles": ["penerima"]
-}
-
-### Register — role tidak valid (harus 400 invalid_role)
-POST {{baseUrl}}/auth/register
-Content-Type: application/json
-
-{
-  "name": "Test",
-  "email": "invalidrole@example.com",
-  "phone": "08111",
-  "password": "rahasia123",
-  "roles": ["bukan_role_valid"]
-}
-
-### Login (simpan hasilnya, dipakai request refresh & logout di bawah)
+### Login (akun seed dev: budi.santoso@gmail.com / Password123!)
 # @name login
 POST {{baseUrl}}/auth/login
 Content-Type: application/json
 
 {
-  "email": "budi@example.com",
-  "password": "rahasia123"
+  "email": "budi.santoso@gmail.com",
+  "password": "Password123!"
 }
 
-### Login — password salah (harus 401 invalid_credentials)
+### Login salah (401 invalid_credentials, pesan sama untuk email tak terdaftar)
 POST {{baseUrl}}/auth/login
 Content-Type: application/json
 
 {
-  "email": "budi@example.com",
-  "password": "salah"
+  "email": "nobody@example.com",
+  "password": "salah-salah"
 }
 
-### Refresh access token
+### Refresh (merotasi: refresh token lama hangus; pakai ulang = seluruh sesi dicabut)
+# @name refresh
 POST {{baseUrl}}/auth/refresh
 Content-Type: application/json
 
@@ -64,7 +41,7 @@ Content-Type: application/json
   "refresh_token": "{{login.response.body.$.data.refresh_token}}"
 }
 
-### Logout (revoke refresh token, butuh access token)
+### Logout
 POST {{baseUrl}}/auth/logout
 Authorization: Bearer {{login.response.body.$.data.access_token}}
 Content-Type: application/json
@@ -73,10 +50,19 @@ Content-Type: application/json
   "refresh_token": "{{login.response.body.$.data.refresh_token}}"
 }
 
-### Refresh pakai token yang sudah di-logout (harus 401 invalid_refresh_token)
-POST {{baseUrl}}/auth/refresh
+### Profil saya
+GET {{baseUrl}}/me
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+
+### Healthcheck
+GET http://localhost:3030/healthz
+
+### Ganti password (mengembalikan sesi baru)
+POST {{baseUrl}}/auth/password
+Authorization: Bearer {{login.response.body.$.data.access_token}}
 Content-Type: application/json
 
 {
-  "refresh_token": "{{login.response.body.$.data.refresh_token}}"
+  "current": "Password123!",
+  "new": "PasswordBaru123!"
 }

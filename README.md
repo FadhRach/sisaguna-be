@@ -1,111 +1,102 @@
 # SisaGuna Backend
 
-REST API untuk SisaGuna — marketplace redistribusi makanan berbasis lokasi. Ditulis
-di Go (Fiber), deploy sebagai container Docker ke server AWS, database Postgres +
-PostGIS self-hosted.
-
-Detail arsitektur, batasan kritis, dan skema database lengkap ada di
-[`CLAUDE.md`](./CLAUDE.md). README ini fokus ke cara menjalankan & test proyeknya.
+REST API dan server realtime untuk SisaGuna, marketplace makanan berlebih dari UMKM kuliner.
+Go (Gin) + Postgres/PostGIS, dijalankan di satu VPS lewat Docker Compose. Aturan proyek dan
+status milestone ada di [`CLAUDE.md`](./CLAUDE.md); kontrak API di [`api/openapi.yaml`](./api/openapi.yaml).
 
 ## Prasyarat
 
-- Docker + Docker Compose
-- Go 1.27+ (opsional, cuma dibutuhkan buat jalan lokal tanpa Docker)
-- [`golang-migrate` CLI](https://github.com/golang-migrate/migrate) untuk menjalankan migrasi
-- (Opsional) Extension **REST Client** di VS Code untuk test API lewat folder `apiendpoints/`
+Go 1.27+, Docker, [`migrate`](https://github.com/golang-migrate/migrate) CLI, dan `sqlc`
+(`go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest`).
 
-## Setup Awal
+## Jalankan lokal
 
 ```bash
-git clone <repo-ini>
-cd SisaGuna-be
-cp .env.example .env
+cp .env.example .env          # isi POSTGRES_PASSWORD, DATABASE_URL, JWT_SECRET (>= 32 byte), ADMIN_EMAIL, ADMIN_PASSWORD
+docker compose up -d postgres # kalau port 5432 bentrok, set POSTGRES_PORT=5434 dan sesuaikan DATABASE_URL
+make migrate-up
+make seed-dev                 # data contoh; semua akun dev berpassword Password123!
+go run ./cmd/api              # http://localhost:3030/healthz
 ```
 
-Isi `.env` — minimal `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `DATABASE_URL`,
-dan `JWT_SECRET` wajib diisi (lihat tabel di CLAUDE.md untuk penjelasan tiap variabel).
+Data dev = salinan dummy app Android (`SisaGuna/`): `budi.santoso@gmail.com` (pembeli sekaligus pemilik Dapur Budi),
+`owner-m1@example.com` (Warung Bu Sari), `wati@example.com` (toko `pending`), admin dari `ADMIN_EMAIL`; password `Password123!`.
+Request contoh ada di `apiendpoints/*.http`.
 
-## Menjalankan dengan Docker (direkomendasikan)
+## Data dummy (seed)
+
+`cmd/seed` adalah program kecil (bukan bagian API) yang mengisi database. Dua mode:
+
+| Mode | Isi | Dipakai untuk |
+| --- | --- | --- |
+| `-env prod` | akun admin dari `ADMIN_EMAIL`/`ADMIN_PASSWORD` + 2 voucher umum | wajib sekali di server sungguhan |
+| `-env dev` | salinan dummy app Android: 13 toko, 39 listing, 59 ulasan, 4 voucher, pesanan, chat, notifikasi, 45 foto | uji lokal dan VPS uji |
+
+Isinya ada di `cmd/seed/data/*.json` (dihasilkan otomatis dari kode Kotlin oleh `scripts/extract_android_seed.py`) dan foto di `cmd/seed/img/`;
+keduanya ikut di-embed ke binary. Mengambil ulang dari app Android: `make sync-android-seed`. Menjalankan seed berulang aman:
+waktu pickup, umur pesanan, dan stok dikembalikan ke keadaan awal tanpa menghapus data lain.
+
+| Tujuan | Lokal (Mac) | VPS uji (Docker) |
+| --- | --- | --- |
+| Segarkan dummy (jendela pickup + stok), tanpa hapus data | `make seed-dev` | `deploy/demo.sh refresh` |
+| Mulai dari nol (hapus semua data) | `make reset-dev` | `deploy/demo.sh reset` (minta konfirmasi, menghapus database; foto tidak dihapus) |
+
+`make reset-dev` hanya untuk lokal (menghapus volume Postgres compose dev), jangan dijalankan di VPS. Di VPS pakai `deploy/demo.sh`
+dari root repo; skrip itu menyalakan `ALLOW_DEMO_SEED=true` hanya untuk satu perintah, karena seed `dev` otomatis ditolak
+kalau `APP_ENV=production`. **Seed dev membuat akun berpassword umum `Password123!`, jadi hanya untuk VPS uji.**
+Data dummy kedaluwarsa dalam hitungan jam (jendela pickup 1–10 jam): ulangi `refresh` sebelum sesi uji.
+
+## Tes manual (Postman)
+
+Panduan lengkap langkah demi langkah ada di [`apiendpoints/README.md`](./apiendpoints/README.md). Singkatnya:
+`make reset-dev` → `go run ./cmd/api` → import `apiendpoints/SisaGuna.postman_collection.json` → jalankan folder
+**★ Alur Cepat MVP**.
+
+## Test
 
 ```bash
-docker compose up --build
+gofmt -l . && go vet ./...
+go test ./...                 # integrasi memakai testcontainers (Docker harus jalan)
 ```
 
-Ini menjalankan dua service: `app` (backend Go) dan `postgres` (image `postgis/postgis`,
-extension PostGIS sudah bawaan, tidak perlu install manual). Server jalan di
-`http://localhost:$PORT` (default `3030`), semua endpoint di bawah prefix `/api/v1`.
+## Deploy ke VPS
 
-Kalau kamu sudah punya Postgres lokal sendiri yang jalan di port 5432, ganti port
-mapping service `postgres` di `docker-compose.yml` (mis. `"5433:5432"`) supaya tidak
-bentrok.
-
-## Menjalankan Migrasi
-
-Postgres di docker-compose port-nya di-map ke host, jadi `migrate` CLI dari host bisa
-langsung connect:
+Panduan lengkap (persiapan VPS, `.env`, verifikasi, backup, pemulihan): [`deploy/README.md`](./deploy/README.md). Ringkasnya:
 
 ```bash
-migrate -database "$DATABASE_URL" -path database/migrations up
+cp .env.example .env          # isi DOMAIN, PUBLIC_BASE_URL, POSTGRES_*, JWT_SECRET, ADMIN_*, R2_* (password acak: openssl rand -hex 24)
+docker compose -f deploy/docker-compose.prod.yml --env-file .env up -d --build
+docker compose -f deploy/docker-compose.prod.yml --env-file .env run --rm --entrypoint /seed api -env prod   # admin + voucher awal
 ```
 
-## Menjalankan Secara Lokal (tanpa Docker)
+Postgres di compose produksi tidak punya `ports`. Migrasi berjalan otomatis lewat service `migrate` sebelum `api` start.
+Backup harian dan salinan foto ke R2 dijelaskan di `deploy/README.md`. Developer mobile: [`apiendpoints/MOBILE.md`](./apiendpoints/MOBILE.md).
 
-Butuh Postgres + PostGIS sendiri yang sudah jalan, lalu:
+## Status pengujian dan risiko sebelum ke VPS
 
-```bash
-go run ./main.go
-```
+**Sudah diuji di mesin lokal** (Mac, Docker/OrbStack):
 
-## Testing API
+| Yang diuji | Cara | Hasil |
+| --- | --- | --- |
+| Logika bisnis, database, API | `go test ./...` dengan Postgres+PostGIS asli (testcontainers), termasuk balapan 10 pembeli rebutan stok, kunci kode pickup, WebSocket, upload foto/video, sinkron ke server S3 tiruan, paritas aturan Kotlin, paritas seed dengan dummy Android | lulus |
+| Seluruh endpoint lewat HTTP | Postman collection (186 request) dijalankan dengan Newman ke server dan database lokal, termasuk upload file asli dan alur cepat | lulus, 0 gagal |
+| Stack produksi (`deploy/docker-compose.prod.yml`) | dibangun dan dijalankan penuh di Mac: Caddy HTTPS, API, Postgres tanpa port publik, migrasi otomatis, folder media, foto publik lewat Caddy, folder privat tidak terjangkau, WebSocket lewat TLS, backup, uji pulih, restore, `deploy/demo.sh reset/refresh` | lulus |
 
-Folder [`apiendpoints/`](./apiendpoints) berisi file `.http` siap pakai (extension
-REST Client di VS Code) untuk semua endpoint yang sudah dibangun — register,
-login, refresh, logout, get/update profil. Lihat `apiendpoints/README.md` untuk
-detail cara pakainya.
+**Belum diuji, risikonya ada di sini:**
 
-Untuk verifikasi cepat lewat terminal sebelum commit:
+| # | Risiko | Akibat kalau terjadi | Yang perlu dilakukan |
+| --- | --- | --- | --- |
+| 1 | Belum pernah jalan di VPS sungguhan: sertifikat Let's Encrypt asli, DNS, firewall | HTTPS gagal terbit, app tidak bisa konek | Ikuti `deploy/README.md`, cek `https://domain/healthz`, buka port 80 dan 443 |
+| 2 | Cloudflare R2 sungguhan belum dicoba (hanya server S3 tiruan) | Foto/backup tidak tersalin ke R2 | Isi `R2_*`, jalankan `backup now`, cek objek muncul di bucket |
+| 3 | `PARTNERS_MODE=dummy` membuat pembayaran non-tunai selalu "sukses" tanpa uang masuk dan kurir hanya hitungan rumus | Penjual melihat pesanan `paid` yang tidak pernah dibayar | Nyalakan hanya di VPS uji. Produksi sungguhan: `off` (default) sampai gateway dan kurir terhubung |
+| 4 | Seed dummy membuat akun berpassword umum `Password123!` | Siapa pun bisa login | Jangan jalankan `deploy/demo.sh` di VPS yang dipakai pengguna sungguhan |
+| 5 | App Android belum diintegrasikan dengan API ini (belum ada kode jaringan) | Perbedaan perilaku baru ketahuan saat integrasi | Baca `apiendpoints/ANDROID-SYNC.md`: tombol "Sudah saya ambil" pembeli, ulasan tanpa pesanan, batas pembatalan, form daftar mitra |
+| 6 | Tiket WebSocket disimpan di memori satu proses | Lebih dari satu instance `api` membuat koneksi WebSocket gagal acak | Jalankan hanya satu container `api` |
+| 7 | `/home` mengurutkan sampai 500 listing aktif per tab di memori (`listing/sort.go`) | Lambat dan "terdekat" tidak akurat kalau listing aktif > 500 | Cukup untuk uji; pindahkan ke SQL bila katalog membesar |
+| 8 | Backup tanpa R2 tersimpan di disk yang sama dengan database | Disk rusak = data dan backup hilang | Isi R2 sebelum dipakai pengguna sungguhan; jalankan `backup restore-test` tiap bulan |
+| 9 | Foto dummy dari Wikimedia, atribusi tidak lengkap | Masalah lisensi bila dipakai publik | Ganti dengan foto milik sendiri sebelum rilis; hanya untuk demo |
+| 10 | Belum diuji beban (banyak pengguna bersamaan) dan belum ada monitoring selain `/healthz` | Masalah performa baru terlihat setelah dipakai | Daftarkan `/healthz` di UptimeRobot, pantau `docker compose logs -f api` |
+| 11 | Push notification (FCM), kurir dan payment gateway sungguhan, lupa password lewat email belum ada | Fitur itu belum berfungsi | Fase berikutnya |
 
-```bash
-gofmt -l .
-go vet ./...
-go build ./...
-go test ./...
-```
-
-## Deploy ke AWS
-
-Mekanisme orkestrasi (ECS, EC2, Lightsail, dst) belum ditentukan di sesi ini — bagian
-ini sengaja digeneralisasi, bukan diasumsikan. Alur dasarnya:
-
-```bash
-docker build -t sisaguna-be .
-# push ke registry (ECR atau lainnya), lalu jalankan di server AWS yang sudah ada
-docker run -p 3030:3030 --env-file .env sisaguna-be
-```
-
-Pastikan `DATABASE_URL` di environment production diarahkan ke Postgres yang benar
-di infrastruktur AWS kamu (bisa container terpisah, bisa RDS, dll — tidak diasumsikan
-di sini).
-
-## Local vs Production Database
-
-`DATABASE_URL` adalah satu-satunya env var yang dibaca aplikasi untuk koneksi DB —
-tidak ada kode yang hardcode ke provider tertentu. Ganti connection string-nya sesuai
-environment, tidak ada perubahan kode yang dibutuhkan:
-
-| Environment | `DATABASE_URL` mengarah ke |
-| --- | --- |
-| Docker Compose (dev) | Service `postgres` di network internal (`postgres:5432`) — diatur otomatis lewat `docker-compose.yml` |
-| Lokal tanpa Docker | Postgres yang kamu jalankan sendiri, biasanya `localhost:5432` |
-| Production (AWS) | Tergantung setup — container Postgres lain, RDS, dst |
-
-## Follow-up yang belum diputuskan
-
-Dicatat di sini biar tidak lupa, bukan bagian dari setup yang sudah selesai:
-
-- **Mekanisme pemicu cron** (`/internal/cron/*`, lihat CLAUDE.md batasan kritis #6) —
-  belum ada cron job berjalan di sisi AWS (dulu pakai Vercel Cron). Kandidat: sidecar
-  container penjadwal (mis. Ofelia) yang `curl` endpoint-nya, AWS EventBridge, atau
-  ticker di dalam aplikasi sendiri.
-- **Penyimpanan foto listing** — dulu pakai Vercel Blob (`BLOB_READ_WRITE_TOKEN`), sudah
-  tidak relevan di AWS. Kemungkinan besar S3, belum diputuskan.
+Urutan aman menuju VPS: (1) VPS uji dengan `PARTNERS_MODE=dummy` dan `deploy/demo.sh reset`, (2) integrasi dan uji dengan app Android,
+(3) baru VPS/konfigurasi produksi: `PARTNERS_MODE` kosong, tanpa seed dev, `R2_*` terisi, `backup restore-test` hijau.

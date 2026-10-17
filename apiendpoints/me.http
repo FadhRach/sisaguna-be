@@ -1,0 +1,50 @@
+@baseUrl = http://localhost:3030/api/v1
+
+### Login dulu
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "email": "budi.santoso@gmail.com", "password": "Password123!" }
+
+### Ubah profil (parsial)
+PATCH {{baseUrl}}/me
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+Content-Type: application/json
+
+{ "name": "Clara Tan", "phone": "81234500001" }
+
+### Daftar alamat
+GET {{baseUrl}}/me/addresses
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+
+### Tambah alamat
+# @name addAddress
+POST {{baseUrl}}/me/addresses
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+Content-Type: application/json
+
+{ "label": "Kos", "full_address": "Jl. Tebet Barat IV No. 9", "lat": -6.226, "lng": 106.853 }
+
+### Pilih alamat aktif
+PUT {{baseUrl}}/me/selected-address
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+Content-Type: application/json
+
+{ "address_id": "{{addAddress.response.body.$.data.id}}" }
+
+### Upload foto (ganti path file)
+POST {{baseUrl}}/media
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+Content-Type: multipart/form-data; boundary=sg
+
+--sg
+Content-Disposition: form-data; name="purpose"
+
+avatar
+--sg
+Content-Disposition: form-data; name="file"; filename="foto.jpg"
+Content-Type: image/jpeg
+
+< ./foto.jpg
+--sg--

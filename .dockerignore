@@ -1,7 +1,7 @@
 .git
-docs/
-apiendpoints/
 .env
-.env.local
+data
+docs
 *.md
-bin/
+
+SisaGuna/

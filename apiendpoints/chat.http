@@ -1,0 +1,55 @@
+# Chat pembeli <-> toko dan tiket WebSocket. Akun: Budi (pembeli), pemilik Warung Bu Sari (mitra). Password123!
+@baseUrl = http://localhost:3030/api/v1
+@sariMerchant = 7b9a2c9e-0000-0000-0000-000000000000 # ganti: GET /me/merchant sebagai owner-m1
+
+### Login pembeli
+# @name buyer
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "email": "budi.santoso@gmail.com", "password": "Password123!" }
+
+### Login mitra
+# @name seller
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "email": "owner-m1@example.com", "password": "Password123!" }
+
+### Id toko Rina
+GET {{baseUrl}}/me/merchant
+Authorization: Bearer {{seller.response.body.$.data.access_token}}
+
+### Mulai percakapan
+# @name conv
+POST {{baseUrl}}/conversations
+Authorization: Bearer {{buyer.response.body.$.data.access_token}}
+Content-Type: application/json
+
+{ "merchant_id": "{{sariMerchant}}" }
+
+### Kirim pesan (client_id sama = idempoten)
+POST {{baseUrl}}/conversations/{{conv.response.body.$.data.id}}/messages
+Authorization: Bearer {{buyer.response.body.$.data.access_token}}
+Content-Type: application/json
+
+{ "client_id": "7b1f5d1e-5c0e-4f57-9a35-2b9f2b9a0001", "body": "Masih ada?" }
+
+### Kotak masuk mitra
+GET {{baseUrl}}/conversations?as=merchant
+Authorization: Bearer {{seller.response.body.$.data.access_token}}
+
+### Pesan
+GET {{baseUrl}}/conversations/{{conv.response.body.$.data.id}}/messages
+Authorization: Bearer {{seller.response.body.$.data.access_token}}
+
+### Tandai dibaca
+POST {{baseUrl}}/conversations/{{conv.response.body.$.data.id}}/read
+Authorization: Bearer {{seller.response.body.$.data.access_token}}
+Content-Type: application/json
+
+{ "last_read_id": 1 }
+
+### Tiket WebSocket (30 detik, sekali pakai) -> ws://localhost:3030/ws?ticket=<ticket>
+POST {{baseUrl}}/ws/ticket
+Authorization: Bearer {{buyer.response.body.$.data.access_token}}

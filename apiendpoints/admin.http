@@ -1,0 +1,22 @@
+# Admin: tinjau toko. Login memakai ADMIN_EMAIL / ADMIN_PASSWORD dari .env.
+@baseUrl = http://localhost:3030/api/v1
+
+### Login admin (ganti email dan password)
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "email": "fadhlannur007@gmail.com", "password": "ISI_ADMIN_PASSWORD" }
+
+### Antrean toko pending
+# @name pending
+GET {{baseUrl}}/admin/merchants?status=pending
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+
+### Setujui toko pertama di antrean (pemilik dapat notifikasi)
+POST {{baseUrl}}/admin/merchants/{{pending.response.body.$.data[0].id}}/approve
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+
+### Tolak
+POST {{baseUrl}}/admin/merchants/{{pending.response.body.$.data[0].id}}/reject
+Authorization: Bearer {{login.response.body.$.data.access_token}}

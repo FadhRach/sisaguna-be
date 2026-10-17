@@ -1,0 +1,83 @@
+# Alur mitra: pesanan masuk, serahkan dengan kode, dashboard, listing. Akun: owner-m1@example.com / Password123!
+@baseUrl = http://localhost:3030/api/v1
+
+### Login mitra
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "email": "owner-m1@example.com", "password": "Password123!" }
+
+### Toko saya
+GET {{baseUrl}}/me/merchant
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+
+### Ubah profil toko (todays_offer kosong = hapus)
+PATCH {{baseUrl}}/me/merchant
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+Content-Type: application/json
+
+{ "todays_offer": "Es teler beli 2 gratis 1", "open_hours": "07.00 - 21.00" }
+
+### Dashboard hari ini
+GET {{baseUrl}}/me/merchant/dashboard
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+
+### Pesanan masuk (tanpa kode pickup)
+# @name inbox
+GET {{baseUrl}}/me/merchant/orders?status=ready
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+
+### Serahkan pesanan: ketik kode dari layar pembeli (4 digit atau SG-1234)
+POST {{baseUrl}}/me/merchant/orders/{{inbox.response.body.$.data[0].id}}/confirm
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+Content-Type: application/json
+
+{ "code": "0000" }
+
+### Batalkan (alasan wajib)
+POST {{baseUrl}}/me/merchant/orders/{{inbox.response.body.$.data[0].id}}/cancel
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+Content-Type: application/json
+
+{ "reason": "Bahan habis" }
+
+### Katalog saya (status turunan)
+GET {{baseUrl}}/me/merchant/listings
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+
+### Upload foto listing (ganti path file), lalu pakai id-nya di bawah
+# @name photo
+POST {{baseUrl}}/media
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+Content-Type: multipart/form-data; boundary=sg
+
+--sg
+Content-Disposition: form-data; name="purpose"
+
+listing
+--sg
+Content-Disposition: form-data; name="file"; filename="foto.jpg"
+Content-Type: image/jpeg
+
+< ./foto.jpg
+--sg--
+
+### Buat listing makanan. made_at harus < batas aman (suhu ruang 4 jam). Ganti waktu dengan 1 jam lalu (UTC).
+POST {{baseUrl}}/listings
+Authorization: Bearer {{login.response.body.$.data.access_token}}
+Idempotency-Key: coba-listing-001
+Content-Type: application/json
+
+{
+  "title": "Nasi Goreng Spesial",
+  "tier": "human",
+  "price": 15000,
+  "price_original": 30000,
+  "stock": 6,
+  "made_at": "2026-10-17T00:00:00Z",
+  "storage": "room_temp",
+  "safety_checks": ["untouched", "sensory_ok", "stored_right", "packed_clean"],
+  "pickup_hours": 2,
+  "photo_media_ids": ["{{photo.response.body.$.data.id}}"]
+}

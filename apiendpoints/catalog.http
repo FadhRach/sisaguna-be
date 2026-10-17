@@ -1,0 +1,35 @@
+# Jelajah katalog (publik, tanpa login). Jalankan `make reset-dev` dulu supaya data contoh masih berlaku.
+@baseUrl = http://localhost:3030/api/v1
+@lat = -6.2433
+@lng = 106.7989
+
+### Home tab makanan (rail nearby, deals, popular, offer_merchants)
+# @name home
+GET {{baseUrl}}/home?lat={{lat}}&lng={{lng}}&tab=human
+
+### Home tab pakan & kompos
+GET {{baseUrl}}/home?lat={{lat}}&lng={{lng}}&tab=farm
+
+### Pencarian di home (other_tab_match_count = hasil di tab lain)
+GET {{baseUrl}}/home?lat={{lat}}&lng={{lng}}&q=roti
+
+### Daftar listing, halaman 1
+GET {{baseUrl}}/listings?lat={{lat}}&lng={{lng}}&page=1&limit=5
+
+### Terdekat dalam 3 km
+GET {{baseUrl}}/listings?lat={{lat}}&lng={{lng}}&sort=nearest&max_km=3
+
+### Termurah / diskon terbesar / gratis / pakan
+GET {{baseUrl}}/listings?sort=cheapest
+###
+GET {{baseUrl}}/listings?sort=biggest_discount
+###
+GET {{baseUrl}}/listings?free=true
+###
+GET {{baseUrl}}/listings?tier=animal_feed
+
+### Detail listing (ID pertama dari home)
+GET {{baseUrl}}/listings/{{home.response.body.$.data.nearby[0].id}}?lat={{lat}}&lng={{lng}}
+
+### Halaman toko
+GET {{baseUrl}}/merchants/{{home.response.body.$.data.nearby[0].merchant.id}}?lat={{lat}}&lng={{lng}}

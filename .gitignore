@@ -10,11 +10,19 @@
 # Vercel
 .vercel
 
-# CLAUDE
-CLAUDE.md
 
 # OS
 .DS_Store
 
 # DOCS
 docs/
+
+# Media lokal & build
+data/
+
+# TOOLS
+CLAUDE.md
+claude.md
+
+# Repo Android (git sendiri) yang diletakkan di sini untuk disalin datanya; bukan bagian repo backend
+/SisaGuna/

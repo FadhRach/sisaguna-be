@@ -1,0 +1,776 @@
+openapi: 3.0.3
+info:
+  title: SisaGuna API
+  version: "0.6.0 (sinkron dengan app Android: kurir + pembayaran tiruan, metode bayar, daftar toko)"
+  description: Kontrak untuk tim Android dan iOS. Diperbarui di PR yang sama dengan perubahan endpoint.
+servers:
+  - url: http://localhost:3030
+paths:
+  /healthz:
+    get:
+      summary: Cek server dan koneksi Postgres
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { data: { type: object, properties: { status: { type: string, example: ok } } } } } } } }
+        "503": { $ref: "#/components/responses/Error" }
+  /api/v1/auth/register:
+    post:
+      summary: Daftar akun dan langsung login
+      description: Rate limit 3 per menit per IP. `account_type` divalidasi, toko dibuat lewat `POST /merchants` (M2).
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/RegisterRequest" } } }
+      responses:
+        "201": { $ref: "#/components/responses/Session" }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { description: "error.code = email_taken", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Error" }
+  /api/v1/auth/login:
+    post:
+      summary: Login
+      description: Rate limit 5 per menit per IP. Pesan error sama untuk email tak terdaftar dan password salah.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [email, password], properties: { email: { type: string }, password: { type: string } } } } }
+      responses:
+        "200": { $ref: "#/components/responses/Session" }
+        "401": { description: "error.code = invalid_credentials", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Error" }
+  /api/v1/auth/refresh:
+    post:
+      summary: Tukar refresh token dengan pasangan token baru
+      description: Refresh token berotasi. Memakai ulang token lama mencabut seluruh sesi (login ulang).
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [refresh_token], properties: { refresh_token: { type: string } } } } }
+      responses:
+        "200": { $ref: "#/components/responses/Session" }
+        "401": { description: "error.code = invalid_refresh_token", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /api/v1/auth/logout:
+    post:
+      summary: Cabut refresh token
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [refresh_token], properties: { refresh_token: { type: string } } } } }
+      responses:
+        "204": { description: Berhasil }
+        "401": { $ref: "#/components/responses/Error" }
+  /api/v1/auth/password:
+    post:
+      summary: Ganti password
+      description: Mencabut semua refresh token lalu mengembalikan sesi baru untuk perangkat ini. Rate limit 5 per menit per akun.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [current, new], properties: { current: { type: string }, new: { type: string, minLength: 8, maxLength: 72, description: "harus berbeda dari current" } } } } }
+      responses:
+        "200": { $ref: "#/components/responses/Session" }
+        "400": { description: "error.code = wrong_password atau validation_failed", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+  /api/v1/me:
+    patch:
+      summary: Ubah profil (parsial)
+      description: Field yang tidak dikirim tidak diubah. `photo_media_id`:null menghapus foto, UUID memasang foto (harus foto publik milik akun ini, dari POST /media).
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/UpdateProfileRequest" } } }
+      responses:
+        "200":
+          description: Profil terbaru
+          content: { application/json: { schema: { type: object, properties: { data: { $ref: "#/components/schemas/Me" } } } } }
+        "400": { description: "error.code = validation_failed atau invalid_media", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409": { description: "error.code = email_taken", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+    get:
+      summary: Profil sendiri dan jumlah notifikasi belum dibaca
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: object, properties: { data: { $ref: "#/components/schemas/Me" } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+  /api/v1/me/addresses:
+    get:
+      summary: Daftar alamat tersimpan
+      security: [{ bearer: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: "#/components/schemas/Address" } } } } } } }
+    post:
+      summary: Tambah alamat (maksimal 20 per akun)
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/AddressInput" } } }
+      responses:
+        "201": { description: Dibuat, content: { application/json: { schema: { type: object, properties: { data: { $ref: "#/components/schemas/Address" } } } } } }
+        "422": { description: "error.code = address_limit", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /api/v1/me/addresses/{id}:
+    parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+    patch:
+      summary: Ubah alamat (parsial; lat dan lng harus berpasangan)
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/AddressInput" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { data: { $ref: "#/components/schemas/Address" } } } } } }
+        "404": { description: "error.code = address_not_found", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+    delete:
+      summary: Hapus alamat (kalau sedang terpilih, kembali ke lokasi GPS)
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Dihapus }
+        "404": { description: "error.code = address_not_found", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /api/v1/me/selected-address:
+    put:
+      summary: Pilih alamat aktif
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, properties: { address_id: { type: string, format: uuid, nullable: true, description: "null = lokasi GPS" } } } } }
+      responses:
+        "204": { description: Berhasil }
+        "404": { description: "error.code = address_not_found", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /api/v1/media:
+    post:
+      summary: Upload foto atau video
+      description: "Foto JPEG/PNG/WebP (maks 8 MB), diperkecil ke 1600 px dan disimpan ulang sebagai JPEG tanpa EXIF/GPS. Video MP4 (maks 30 MB dan 30 detik, hanya purpose=listing; metadata lokasi dibuang, tidak di-transcode): error video_too_long, corrupt_video, video_not_allowed. Jenis dikenali dari isi file. purpose=complaint bersifat privat. Rate limit 30 per jam per akun."
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, purpose]
+              properties:
+                file: { type: string, format: binary }
+                purpose: { type: string, enum: [listing, avatar, merchant, review, complaint] }
+      responses:
+        "201": { description: Dibuat, content: { application/json: { schema: { type: object, properties: { data: { $ref: "#/components/schemas/Media" } } } } } }
+        "413": { description: "error.code = file_too_large", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "415": { description: "error.code = unsupported_media_type", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "422": { description: "error.code = corrupt_image, image_too_large, video_too_long, atau corrupt_video", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /api/v1/media/private/{id}:
+    get:
+      summary: Ambil file privat (pemilik atau admin)
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: Gambar JPEG, content: { image/jpeg: { schema: { type: string, format: binary } } } }
+        "404": { description: "error.code = media_not_found", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /api/v1/home:
+    get:
+      summary: Beranda (rail nearby, deals, popular, animal_feed, compost, offer_merchants)
+      description: Tab `human` mengisi nearby/deals/popular dengan makanan; tab `farm` mengisinya dengan pakan/kompos dan mengisi rail animal_feed dan compost. `other_tab_match_count` = jumlah hasil `q` di tab lain. Syarat feed - listing aktif, stok > 0, di dalam jendela pickup, toko approved.
+      parameters:
+        - { name: tab, in: query, schema: { type: string, enum: [human, farm] } }
+        - { name: lat, in: query, schema: { type: number } }
+        - { name: lng, in: query, schema: { type: number } }
+        - { name: q, in: query, schema: { type: string, maxLength: 60 } }
+        - { name: free, in: query, schema: { type: boolean } }
+        - { name: max_km, in: query, schema: { type: number } }
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+  /api/v1/listings:
+    get:
+      summary: Daftar listing (halaman)
+      description: "`distance_km` dihitung server (null kalau lat/lng tidak dikirim). meta berisi page, limit, total, total_pages."
+      parameters:
+        - { name: tier, in: query, schema: { type: string, enum: [human, animal_feed, compost] } }
+        - { name: sort, in: query, schema: { type: string, enum: [relevant, nearest, cheapest, biggest_discount, ending_soon, popular] } }
+        - { name: lat, in: query, schema: { type: number } }
+        - { name: lng, in: query, schema: { type: number } }
+        - { name: q, in: query, schema: { type: string } }
+        - { name: free, in: query, schema: { type: boolean } }
+        - { name: max_km, in: query, schema: { type: number } }
+        - { name: page, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: limit, in: query, schema: { type: integer, maximum: 50 } }
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+    post:
+      summary: Buat listing (mitra, toko approved)
+      description: "Header `Idempotency-Key` wajib; request ulang mengembalikan listing yang sama dengan 200. Tier human - made_at, 4 checklist (untouched, sensory_ok, stored_right, packed_clean) wajib. safe_until = made_at + jam aman (room_temp 4, shelf 72, chilled 48, frozen 168). pickup_end = yang lebih awal antara +pickup_hours (1/2/4/8) dan safe_until. Lewat batas aman: 422 past_safe_window + suggested_tier=animal_feed."
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string, maxLength: 64 } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateListing" } } }
+      responses:
+        "201": { $ref: "#/components/responses/Data" }
+        "200": { description: Idempotency-Key sudah pernah dipakai; listing lama dikembalikan }
+        "403": { description: "merchant_required atau merchant_not_approved" }
+        "422": { description: "past_safe_window | checklist_incomplete (field missing) | made_at_required | invalid_price" }
+  /api/v1/listings/{id}:
+    parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+    get:
+      summary: Detail listing
+      description: Berisi status turunan (active, sold_out, expired, paused), safety (level, headline, advice, safe_until), foto, toko, more_from_merchant.
+      parameters:
+        - { name: lat, in: query, schema: { type: number } }
+        - { name: lng, in: query, schema: { type: number } }
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "404": { description: listing_not_found }
+    patch:
+      summary: Ubah stok, harga, jeda, atau status (mitra pemilik)
+      description: "price_original 0 menghapus harga coret. pickup_hours memperpanjang jendela (tetap dibatasi safe_until). status active atau paused."
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/UpdateListing" } } }
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+    delete:
+      summary: Hapus listing (soft delete)
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Dihapus }
+  /api/v1/merchants:
+    post:
+      summary: Daftarkan toko (status pending, satu per akun)
+      security: [{ bearer: [] }]
+      responses:
+        "201": { $ref: "#/components/responses/Data" }
+        "409": { description: merchant_exists }
+  /api/v1/merchants/{id}:
+    get:
+      summary: Halaman toko publik (hanya approved) beserta listing yang masih tampil
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: lat, in: query, schema: { type: number } }
+        - { name: lng, in: query, schema: { type: number } }
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "404": { description: merchant_not_found }
+  /api/v1/me/merchant:
+    get:
+      summary: Toko milik saya
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+    patch:
+      summary: Ubah profil toko (parsial; todays_offer kosong = hapus; lat dan lng berpasangan, listing ikut pindah)
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+  /api/v1/me/merchant/listings:
+    get:
+      summary: Katalog saya (status turunan active, sold_out, expired, paused)
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: page, in: query, schema: { type: integer } }
+        - { name: limit, in: query, schema: { type: integer } }
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+  /api/v1/me/merchant/dashboard:
+    get:
+      summary: Dashboard hari ini (WIB) - sales_today, commission_today, net_today, completed_today, pending_orders, active_listings
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+  /api/v1/me/merchant/orders:
+    get:
+      summary: Pesanan masuk toko (kode pickup disembunyikan)
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [ready, done] } }
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer } }
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+  /api/v1/me/merchant/orders/{id}/confirm:
+    post:
+      summary: Serahkan pesanan dengan kode pickup (4 digit, sg-1234, atau SG-1234)
+      description: "Salah kode - 422 wrong_code (attempts_left). 5 salah dalam 10 menit - 429 too_many_attempts untuk order itu."
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [code], properties: { code: { type: string } } } } }
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+  /api/v1/me/merchant/orders/{id}/cancel:
+    post:
+      summary: Batalkan pesanan oleh mitra (alasan wajib; hanya saat ready)
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [reason], properties: { reason: { type: string, maxLength: 200 } } } } }
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+  /api/v1/checkout/quote:
+    post:
+      description: "Body: merchant_id, lines[{listing_id, quantity}], voucher_code?, fulfillment (pickup|delivery), courier? (gosend|grab|shopee|lalamove), speed? (priority|standard|saver), address_id? (kosong = alamat terpilih). Respons memuat delivery {available, reason, distance_km, address, speed, options[] termurah dulu, selected} dan delivery_fee/total. Kurir dan ongkir TIRUAN (PARTNERS_MODE=dummy); mode off: delivery=null dan hanya tunai."
+      summary: Hitung rincian harga (tidak mengubah data)
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/Cart" } } }
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+  /api/v1/orders:
+    post:
+      summary: Buat pesanan (satu transaksi)
+      description: "Header `Idempotency-Key` wajib. `expected_total` (opsional) dibandingkan dengan hasil server; beda - 409 price_changed berisi subtotal, voucher_discount, service_fee, total terbaru. payment_kind selain cash - 422 payment_method_unavailable."
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string, maxLength: 64 } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/PlaceOrder" } } }
+      responses:
+        "201": { $ref: "#/components/responses/Data" }
+        "200": { description: Idempotency-Key sudah pernah dipakai; order lama dikembalikan }
+        "409": { description: "price_changed | out_of_stock | listing_unavailable" }
+        "422": { description: "voucher_* | payment_method_unavailable | delivery_unavailable" }
+  /api/v1/orders/{id}:
+    get:
+      summary: Detail pesanan (pembeli melihat kode; mitra melihat komisi/payout)
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "404": { description: order_not_found }
+  /api/v1/orders/{id}/cancel:
+    post:
+      summary: Batalkan oleh pembeli (hanya saat ready dan sebelum pickup_by)
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "409": { description: "invalid_order_state | cancel_window_closed" }
+  /api/v1/me/orders:
+    get:
+      summary: Pesanan pembeli (cursor)
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: tab, in: query, schema: { type: string, enum: [ongoing, history] } }
+        - { name: filter, in: query, schema: { type: string, enum: [all, completed, cancelled] } }
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer } }
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+  /api/v1/me/vouchers:
+    get:
+      summary: Voucher tersedia dan milik saya (status available, claimed, used)
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+  /api/v1/vouchers/{code}/claim:
+    post:
+      summary: Klaim voucher
+      security: [{ bearer: [] }]
+      parameters: [{ name: code, in: path, required: true, schema: { type: string } }]
+      responses:
+        "204": { description: Diklaim }
+        "404": { description: voucher_unavailable }
+        "409": { description: voucher_already_claimed }
+  /api/v1/me/notifications:
+    get:
+      summary: Notifikasi (cursor, terbaru dulu)
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: type, in: query, schema: { type: string, enum: [pickup, order, merchant, promo, impact] } }
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer } }
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+  /api/v1/me/notifications/{id}:
+    patch:
+      summary: 'Tandai dibaca (body {"read": true})'
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "204": { description: OK }
+  /api/v1/me/notifications/read-all:
+    post:
+      summary: Tandai semua dibaca
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: OK }
+  /api/v1/admin/merchants:
+    get:
+      summary: Daftar toko untuk admin (page/limit, filter status)
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [pending, approved, rejected, suspended] } }
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "403": { description: forbidden }
+  /api/v1/admin/merchants/{id}/approve:
+    post:
+      summary: Setujui toko (pemilik dapat notifikasi dan event merchant.status_changed)
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "204": { description: OK }
+  /api/v1/admin/merchants/{id}/reject:
+    post:
+      summary: Tolak toko
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "204": { description: OK }
+  /api/v1/orders/{id}/review:
+    post:
+      summary: "Beri ulasan (order completed, sekali, maks 7 hari)"
+      description: "Body: stars 1-5, tags (maks 5), comment (maks 500), media_ids (maks 3, foto publik milik sendiri, belum dipakai). Error: order_not_completed, review_window_closed, already_reviewed."
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, description: "stars, tags, comment, media_ids" } } } }
+      responses:
+        "201": { $ref: "#/components/responses/Data" }
+        "4XX": { $ref: "#/components/responses/Error" }
+  /api/v1/merchants/{id}/reviews:
+    get:
+      summary: "Ulasan toko (publik, cursor)"
+      description: "Hanya nama depan pembeli."
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }, { name: cursor, in: query, schema: { type: string } }, { name: limit, in: query, schema: { type: integer, maximum: 50 } }]
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "4XX": { $ref: "#/components/responses/Error" }
+  /api/v1/orders/{id}/complaint:
+    post:
+      summary: "Komplain order completed (sekali, maks 24 jam)"
+      description: "Body: reason (not_fresh|wrong_item|missing|packaging|hygiene|merchant|other), detail 10-1000, media_ids maks 3 (upload purpose=complaint, privat). Tanpa refund otomatis di Fase 1."
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, description: "reason, detail, media_ids" } } } }
+      responses:
+        "201": { $ref: "#/components/responses/Data" }
+        "4XX": { $ref: "#/components/responses/Error" }
+  /api/v1/admin/complaints:
+    get:
+      summary: "Daftar komplain (admin, page/limit, ?status=)"
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "4XX": { $ref: "#/components/responses/Error" }
+  /api/v1/admin/complaints/{id}:
+    patch:
+      summary: "Ubah status komplain (admin)"
+      description: "status reviewing|resolved|rejected; resolved/rejected wajib resolution_note. Komplain tertutup tidak bisa diubah (409). Pembeli mendapat notifikasi."
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, description: "status, resolution_note" } } } }
+      responses:
+        "204": { description: OK }
+        "4XX": { $ref: "#/components/responses/Error" }
+  /api/v1/me/impact:
+    get:
+      summary: "Statistik dampak"
+      description: "completed_orders, portions, feed_compost_kg, saved_rupiah. Karbon belum dihitung."
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "4XX": { $ref: "#/components/responses/Error" }
+  /api/v1/me/saved-merchants:
+    get:
+      summary: "Toko favorit (kartu toko; ?lat&lng untuk distance_km)"
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "4XX": { $ref: "#/components/responses/Error" }
+  /api/v1/me/saved-merchants/{id}:
+    put:
+      summary: "Simpan toko (idempoten, hanya toko approved)"
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "204": { description: OK }
+        "4XX": { $ref: "#/components/responses/Error" }
+    delete:
+      summary: "Hapus dari favorit (idempoten)"
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "204": { description: OK }
+        "4XX": { $ref: "#/components/responses/Error" }
+  /api/v1/me/notifications/{id}/restore:
+    post:
+      summary: "Batalkan hapus notifikasi"
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "204": { description: OK }
+        "4XX": { $ref: "#/components/responses/Error" }
+  /api/v1/me/notification-prefs:
+    get:
+      summary: "Preferensi notifikasi"
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "4XX": { $ref: "#/components/responses/Error" }
+    put:
+      summary: "Ganti semua saklar (semua field wajib)"
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, description: "enabled, pickup, order, merchant, promo, impact" } } } }
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "4XX": { $ref: "#/components/responses/Error" }
+  /api/v1/conversations:
+    get:
+      summary: "Kotak masuk (?as=buyer|merchant, cursor)"
+      description: "Hanya percakapan berisi pesan; ada unread."
+      security: [{ bearer: [] }]
+      parameters: [{ name: as, in: query, required: true, schema: { type: string, enum: [buyer, merchant] } }, { name: cursor, in: query, schema: { type: string } }, { name: limit, in: query, schema: { type: integer, maximum: 50 } }]
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "4XX": { $ref: "#/components/responses/Error" }
+    post:
+      summary: "Mulai/ambil percakapan dengan toko approved"
+      description: "Body: merchant_id. Chat ke toko sendiri 403 own_merchant."
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, description: "merchant_id" } } } }
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "4XX": { $ref: "#/components/responses/Error" }
+  /api/v1/conversations/{id}/messages:
+    get:
+      summary: "Pesan urut naik (?before_id, ?after_id, ?limit<=100)"
+      description: "meta.peer_last_read_id = tanda baca lawan bicara."
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "4XX": { $ref: "#/components/responses/Error" }
+    post:
+      summary: "Kirim pesan (rate limit 20/menit per akun)"
+      description: "Body: client_id (UUID dari HP; kirim ulang = 200 dengan pesan yang sama), body 1-1000, listing_id opsional milik toko itu."
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, description: "client_id, body, listing_id" } } } }
+      responses:
+        "201": { $ref: "#/components/responses/Data" }
+        "4XX": { $ref: "#/components/responses/Error" }
+  /api/v1/conversations/{id}/read:
+    post:
+      summary: "Tandai dibaca sampai last_read_id (hanya maju)"
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, description: "last_read_id" } } } }
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "4XX": { $ref: "#/components/responses/Error" }
+  /api/v1/ws/ticket:
+    post:
+      summary: "Tiket WebSocket sekali pakai, berlaku 30 detik"
+      description: "Pakai di GET /ws?ticket=. Event: order.created, order.updated, listing.stock_changed (subscribe topic listing:<id>), message.created, conversation.read, typing, notification.created, merchant.status_changed. Pesan klien: subscribe, unsubscribe, typing. Maks 5 koneksi per akun, 20 topic, 4 KB per pesan."
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "4XX": { $ref: "#/components/responses/Error" }
+  /api/v1/admin/vouchers:
+    get:
+      summary: "Daftar voucher (admin, page/limit)"
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "4XX": { $ref: "#/components/responses/Error" }
+    post:
+      summary: "Buat voucher (admin)"
+      description: "Body: code (A-Z0-9, 4-20, huruf besar), title, description, tepat satu dari percent_off/flat_off, max_discount (hanya persen), min_spend, merchant_id (voucher toko, ditanggung mitra), applies_to_tier, starts_at, expires_at, quota, terms, accent_hex. Error: voucher_code_taken, validation_failed (detail), merchant_not_found. Mengembalikan voucher."
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, description: "lihat deskripsi" } } } }
+      responses:
+        "201": { $ref: "#/components/responses/Data" }
+        "4XX": { $ref: "#/components/responses/Error" }
+  /api/v1/admin/vouchers/{code}:
+    patch:
+      summary: "Ubah voucher (admin)"
+      description: "Bisa: title, description, min_spend, expires_at, quota (tidak di bawah used_count), is_active, terms, accent_hex. Jenis dan besar diskon tidak bisa diubah."
+      security: [{ bearer: [] }]
+      parameters: [{ name: code, in: path, required: true, schema: { type: string } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, description: "field opsional" } } } }
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "4XX": { $ref: "#/components/responses/Error" }
+  /api/v1/me/devices:
+    put:
+      summary: "Daftarkan token push (FCM)"
+      description: "Body: token, platform (android|ios). Idempoten. Pengiriman push menunggu Fase 2."
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, description: "token, platform" } } } }
+      responses:
+        "204": { description: OK }
+        "4XX": { $ref: "#/components/responses/Error" }
+  /api/v1/me/devices/{token}:
+    delete:
+      summary: "Hapus token push (saat logout)"
+      security: [{ bearer: [] }]
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      responses:
+        "204": { description: OK }
+        "4XX": { $ref: "#/components/responses/Error" }
+  /api/v1/merchants:
+    get:
+      summary: "Daftar toko approved (rekomendasi penyedia)"
+      description: "Toko milik sendiri tidak ikut. Tiap kartu: available_count, next_pickup_end, distance_km, is_saved, banner_url. ?available=true hanya toko yang punya listing tampil."
+      parameters: [{ name: lat, in: query, schema: { type: number } }, { name: lng, in: query, schema: { type: number } }, { name: available, in: query, schema: { type: boolean } }]
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "4XX": { $ref: "#/components/responses/Error" }
+  /api/v1/me/payment-methods:
+    get:
+      summary: "Metode pembayaran: QRIS, e-wallet tertaut, tunai (TIRUAN)"
+      description: "QRIS dan tunai selalu ada. Mengembalikan daftar terurut: QRIS, e-wallet, tunai."
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "4XX": { $ref: "#/components/responses/Error" }
+    post:
+      summary: "Tautkan e-wallet (TIRUAN, tanpa verifikasi)"
+      description: "Body: kind (gopay|ovo|dana), phone (min 8 digit). Nomor disimpan disamarkan (0812 •••• 7890). Mengembalikan daftar terbaru."
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, description: "kind, phone" } } } }
+      responses:
+        "201": { $ref: "#/components/responses/Data" }
+        "4XX": { $ref: "#/components/responses/Error" }
+  /api/v1/me/payment-methods/default:
+    put:
+      summary: "Jadikan metode utama"
+      description: "Body: kind. 404 payment_method_not_found kalau belum ditautkan."
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, description: "kind" } } } }
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "4XX": { $ref: "#/components/responses/Error" }
+  /api/v1/me/payment-methods/{kind}:
+    delete:
+      summary: "Lepas e-wallet"
+      description: "QRIS dan tunai tidak bisa dilepas (422 payment_method_fixed). Kalau yang dilepas adalah default, QRIS menjadi default lagi."
+      security: [{ bearer: [] }]
+      parameters: [{ name: kind, in: path, required: true, schema: { type: string, enum: [gopay, ovo, dana] } }]
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "4XX": { $ref: "#/components/responses/Error" }
+components:
+  securitySchemes:
+    bearer: { type: http, scheme: bearer, bearerFormat: JWT }
+  responses:
+    Data: { description: "Sukses; bentuk {data, meta?}. Skema per endpoint ada di README apiendpoints dan contoh respons Postman.", content: { application/json: { schema: { type: object, properties: { data: {}, meta: { type: object } } } } } }
+    Error: { description: Error, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+    Session:
+      description: Sesi baru
+      content: { application/json: { schema: { type: object, properties: { data: { $ref: "#/components/schemas/Session" } } } } }
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: object, properties: { code: { type: string, example: validation_failed }, message: { type: string } } }
+    RegisterRequest:
+      type: object
+      required: [name, email, phone, password, account_type]
+      properties:
+        name: { type: string, maxLength: 80 }
+        email: { type: string, format: email }
+        phone: { type: string, description: "8-14 digit tanpa +62", example: "81234567890" }
+        password: { type: string, minLength: 8, maxLength: 72 }
+        account_type: { type: string, enum: [buyer, merchant] }
+    Profile:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string }
+        phone: { type: string }
+        avatar_key: { type: string, nullable: true }
+        photo_url: { type: string, nullable: true }
+        selected_address_id: { type: string, format: uuid, nullable: true }
+        location_label: { type: string, nullable: true }
+        is_admin: { type: boolean }
+        created_at: { type: string, format: date-time }
+    Me:
+      allOf:
+        - $ref: "#/components/schemas/Profile"
+        - type: object
+          properties: { unread_notifications: { type: integer } }
+    Session:
+      type: object
+      properties:
+        access_token: { type: string, description: JWT HS256, berlaku 15 menit }
+        refresh_token: { type: string, description: Opaque, berlaku 30 hari, berotasi }
+        expires_at: { type: string, format: date-time }
+        user: { $ref: "#/components/schemas/Profile" }
+    UpdateProfileRequest:
+      type: object
+      properties:
+        name: { type: string, maxLength: 80 }
+        email: { type: string, format: email }
+        phone: { type: string, example: "81234567890" }
+        avatar_key: { type: string, maxLength: 30 }
+        photo_media_id: { type: string, format: uuid, nullable: true }
+    Address:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        label: { type: string }
+        full_address: { type: string }
+        note: { type: string }
+        lat: { type: number }
+        lng: { type: number }
+    AddressInput:
+      type: object
+      properties:
+        label: { type: string, maxLength: 30 }
+        full_address: { type: string, maxLength: 300 }
+        note: { type: string, maxLength: 200 }
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lng: { type: number, minimum: -180, maximum: 180 }
+    Media:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [image, video] }
+        url: { type: string, description: URL absolut }
+        thumb_url: { type: string, nullable: true }
+        width: { type: integer }
+        height: { type: integer }
+        duration_ms: { type: integer, description: "hanya video" }
+    CreateListing:
+      type: object
+      required: [title, tier, stock, pickup_hours, photo_media_ids]
+      properties:
+        title: { type: string, minLength: 3, maxLength: 80 }
+        description: { type: string, maxLength: 500 }
+        tier: { type: string, enum: [human, animal_feed, compost] }
+        is_free: { type: boolean }
+        price: { type: integer, minimum: 1 }
+        price_original: { type: integer, minimum: 1 }
+        stock: { type: integer, minimum: 1, maximum: 10000 }
+        halal: { type: string, enum: [halal_certified, non_halal, unverified, other] }
+        allergens: { type: array, items: { type: string } }
+        made_at: { type: string, format: date-time, description: wajib untuk tier human }
+        storage: { type: string, enum: [room_temp, shelf, chilled, frozen], default: room_temp }
+        safety_checks: { type: array, items: { type: string } }
+        pickup_hours: { type: integer, enum: [1, 2, 4, 8] }
+        photo_media_ids: { type: array, minItems: 1, maxItems: 5, items: { type: string, format: uuid } }
+        video_media_id: { type: string, format: uuid, nullable: true, description: "hasil upload video MP4; muncul sebagai video_url di detail listing" }
+    UpdateListing:
+      type: object
+      properties:
+        stock: { type: integer, minimum: 0 }
+        price: { type: integer, minimum: 1 }
+        price_original: { type: integer, minimum: 0 }
+        pickup_hours: { type: integer, enum: [1, 2, 4, 8] }
+        status: { type: string, enum: [active, paused] }
+    Cart:
+      type: object
+      required: [merchant_id, lines]
+      properties:
+        merchant_id: { type: string, format: uuid }
+        lines: { type: array, minItems: 1, maxItems: 20, items: { type: object, required: [listing_id, quantity], properties: { listing_id: { type: string, format: uuid }, quantity: { type: integer, minimum: 1 } } } }
+        voucher_code: { type: string }
+        fulfillment: { type: string, enum: [pickup, delivery], description: "delivery = kurir TIRUAN (PARTNERS_MODE=dummy); kirim juga courier, speed, address_id" }
+    PlaceOrder:
+      allOf:
+        - $ref: "#/components/schemas/Cart"
+        - type: object
+          required: [payment_kind]
+          properties:
+            payment_kind: { type: string, enum: [cash, qris, gopay, ovo, dana], description: "non-tunai TIRUAN (langsung paid) bila PARTNERS_MODE=dummy; e-wallet harus ditautkan dulu" }
+            note: { type: string, maxLength: 200 }
+            expected_total: { type: integer }
