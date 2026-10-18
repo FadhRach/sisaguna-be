@@ -41,7 +41,7 @@ func TestReview(t *testing.T) {
 
 	photo := fx.FreeMedia(buyer)
 	r, err := svc.Create(ctx, buyer, done, CreateRequest{Stars: 5, Tags: []string{" Porsi pas "}, Comment: "Enak!", MediaIDs: []uuid.UUID{photo}})
-	if err != nil || r.Tags[0] != "Porsi pas" {
+	if err != nil || r.Tags[0] != "Porsi pas" || r.BuyerName != "Budi S." {
 		t.Fatalf("create: %+v %v", r, err)
 	}
 	if _, err := svc.Create(ctx, buyer, done, CreateRequest{Stars: 1}); !errors.Is(err, ErrAlreadyReviewed) {

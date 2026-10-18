@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"strconv"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"github.com/FadhRach/sisaguna-be/db/sqlc"
 	"github.com/FadhRach/sisaguna-be/internal/listing"
 	"github.com/FadhRach/sisaguna-be/internal/media"
+	"github.com/FadhRach/sisaguna-be/internal/notification"
 	"github.com/FadhRach/sisaguna-be/internal/platform/database"
 	pmedia "github.com/FadhRach/sisaguna-be/internal/platform/media"
 )
@@ -23,12 +25,21 @@ var (
 	ErrExists       = errors.New("akun ini sudah punya toko")
 	ErrNotFound     = errors.New("toko tidak ditemukan")
 	ErrPartialPoint = errors.New("lat dan lng harus dikirim berpasangan")
+	ErrInactive     = errors.New("toko ditolak atau ditangguhkan, hubungi admin")
 )
 
 type Service struct {
 	repo     *Repository
 	listings *listing.Service
 	urls     pmedia.URLs
+	approve  func(ctx context.Context, id uuid.UUID) error // non-nil = toko baru langsung disetujui (MERCHANT_AUTO_APPROVE)
+}
+
+// WithAutoApprove membuat toko baru langsung berstatus approved lewat fn (menyetujui seperti admin: notifikasi + event).
+// Hanya untuk lingkungan uji; produksi sebaiknya tetap lewat persetujuan admin.
+func (s *Service) WithAutoApprove(fn func(ctx context.Context, id uuid.UUID) error) *Service {
+	s.approve = fn
+	return s
 }
 
 func NewService(repo *Repository, listings *listing.Service, urls pmedia.URLs) *Service {
@@ -45,7 +56,7 @@ func (s *Service) Create(ctx context.Context, owner uuid.UUID, in CreateRequest)
 	if in.PrepMinutes != nil {
 		prep = int16(*in.PrepMinutes)
 	}
-	_, err := s.repo.Create(ctx, sqlc.CreateMerchantParams{
+	id, err := s.repo.Create(ctx, sqlc.CreateMerchantParams{
 		OwnerID: owner, Name: strings.TrimSpace(in.Name), About: in.About, Address: strings.TrimSpace(in.Address),
 		Lat: *in.Lat, Lng: *in.Lng, LocationLabel: in.LocationLabel, OpenHours: in.OpenHours,
 		Halal: sqlc.HalalStatus(halal), Allergens: listing.ToAllergens(in.Allergens), PrepMinutes: prep,
@@ -56,7 +67,29 @@ func (s *Service) Create(ctx context.Context, owner uuid.UUID, in CreateRequest)
 		}
 		return nil, fmt.Errorf("merchant service create: %w", err)
 	}
+	if s.approve != nil {
+		if err := s.approve(ctx, id); err != nil {
+			return nil, fmt.Errorf("merchant service create: auto approve: %w", err)
+		}
+	} else {
+		s.notifyAdmins(ctx, id, strings.TrimSpace(in.Name))
+	}
 	return s.Mine(ctx, owner)
+}
+
+// notifyAdmins memberi tahu semua admin ada toko menunggu persetujuan. Gagal tidak menggagalkan pendaftaran.
+func (s *Service) notifyAdmins(ctx context.Context, merchantID uuid.UUID, name string) {
+	admins, err := s.repo.q.ListAdminIDs(ctx)
+	if err != nil {
+		slog.Error("daftar admin gagal", "err", err)
+		return
+	}
+	for _, a := range admins {
+		if err := notification.Create(ctx, s.repo.q, notification.New{UserID: a, Type: sqlc.NotificationTypeMerchant, Title: "Toko baru menunggu persetujuan",
+			Body: name + " mendaftar sebagai mitra.", Data: map[string]any{"merchant_id": merchantID}}); err != nil {
+			slog.Error("notifikasi admin gagal", "err", err)
+		}
+	}
 }
 
 func (s *Service) Mine(ctx context.Context, owner uuid.UUID) (*MerchantDTO, error) {
@@ -89,6 +122,9 @@ func (s *Service) Update(ctx context.Context, owner uuid.UUID, in UpdateRequest)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("merchant service update: %w", err)
+	}
+	if cur.Status == sqlc.MerchantStatusRejected || cur.Status == sqlc.MerchantStatusSuspended {
+		return nil, ErrInactive // toko pending boleh menyusun profil; yang ditolak/ditangguhkan tidak boleh mengubah apa pun
 	}
 	p := sqlc.UpdateMerchantParams{
 		ID: cur.ID, Name: text(in.Name, true), About: text(in.About, false), Address: text(in.Address, true),

@@ -16,6 +16,7 @@ var errRules = []httpx.ErrorRule{
 	{Err: ErrInvalidRefreshToken, Status: http.StatusUnauthorized, Code: "invalid_refresh_token"},
 	{Err: ErrUserNotFound, Status: http.StatusNotFound, Code: "user_not_found"},
 	{Err: ErrWrongPassword, Status: http.StatusBadRequest, Code: "wrong_password"},
+	{Err: ErrInvalidResetCode, Status: http.StatusBadRequest, Code: "invalid_reset_code"},
 	{Err: ErrInvalidMedia, Status: http.StatusBadRequest, Code: "invalid_media"},
 }
 
@@ -27,13 +28,15 @@ type Handler struct {
 func NewHandler(svc *Service, urls pmedia.URLs) *Handler { return &Handler{svc: svc, urls: urls} }
 
 // Limits adalah rate limit per rute; dibuat di main.go supaya state-nya tidak global.
-type Limits struct{ Login, Register, Password gin.HandlerFunc }
+type Limits struct{ Login, Register, Password, Recovery gin.HandlerFunc }
 
 func (h *Handler) Routes(api *gin.RouterGroup, requireAuth gin.HandlerFunc, l Limits) {
 	a := api.Group("/auth")
 	a.POST("/register", l.Register, h.register)
 	a.POST("/login", l.Login, h.login)
 	a.POST("/refresh", h.refresh)
+	a.POST("/forgot-password", l.Recovery, h.forgotPassword)
+	a.POST("/reset-password", l.Recovery, h.resetPassword)
 	a.POST("/logout", requireAuth, h.logout)
 	a.POST("/password", requireAuth, l.Password, h.changePassword)
 	api.GET("/me", requireAuth, h.me)
@@ -65,6 +68,28 @@ func (h *Handler) refresh(c *gin.Context) {
 		return
 	}
 	sess, err := h.svc.Refresh(c.Request.Context(), req.RefreshToken, c.Request.UserAgent())
+	h.respondSession(c, http.StatusOK, sess, err)
+}
+
+// forgotPassword menjawab sama untuk email terdaftar maupun tidak (202), supaya daftar akun tidak bisa ditebak.
+func (h *Handler) forgotPassword(c *gin.Context) {
+	var req ForgotPasswordRequest
+	if !httpx.BindJSON(c, &req) {
+		return
+	}
+	if err := h.svc.ForgotPassword(c.Request.Context(), req.Email); err != nil {
+		httpx.Fail(c, err, errRules)
+		return
+	}
+	httpx.OK(c, http.StatusAccepted, gin.H{"message": "Jika email terdaftar, kode 6 digit dikirim dan berlaku 15 menit."})
+}
+
+func (h *Handler) resetPassword(c *gin.Context) {
+	var req ResetPasswordRequest
+	if !httpx.BindJSON(c, &req) {
+		return
+	}
+	sess, err := h.svc.ResetPassword(c.Request.Context(), req.Email, req.Code, req.NewPassword, c.Request.UserAgent())
 	h.respondSession(c, http.StatusOK, sess, err)
 }
 

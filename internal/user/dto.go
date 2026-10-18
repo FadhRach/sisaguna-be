@@ -20,6 +20,16 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required,max=72"`
 }
 
+type ForgotPasswordRequest struct {
+	Email string `json:"email" binding:"required,email,max=254"`
+}
+
+type ResetPasswordRequest struct {
+	Email       string `json:"email" binding:"required,email,max=254"`
+	Code        string `json:"code" binding:"required,len=6,numeric"`
+	NewPassword string `json:"new_password" binding:"required,min=8,max=72"`
+}
+
 type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token" binding:"required"`
 }

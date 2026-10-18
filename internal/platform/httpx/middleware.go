@@ -67,10 +67,14 @@ func recoverJSON() gin.HandlerFunc {
 	})
 }
 
+// uploadPath adalah satu-satunya rute yang boleh melewati batas 1 MB (ia memasang batas 30 MB + overhead sendiri).
+// Batas ditentukan oleh rute, bukan oleh header Content-Type yang bisa dipalsukan klien.
+const uploadPath = "/api/v1/media"
+
 func limitBody() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if strings.HasPrefix(c.GetHeader("Content-Type"), "multipart/") {
-			c.Next() // upload file mengatur batasnya sendiri
+		if c.Request.Method == http.MethodPost && c.FullPath() == uploadPath {
+			c.Next()
 			return
 		}
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxBodyBytes)
@@ -81,7 +85,7 @@ func limitBody() gin.HandlerFunc {
 // RequireAuth memvalidasi Bearer access token dan menaruh user id di context.
 func RequireAuth(tokens *auth.Tokens) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if authenticate(c, tokens) {
+		if authenticate(c, tokens, nil) {
 			c.Next()
 		}
 	}
@@ -89,10 +93,11 @@ func RequireAuth(tokens *auth.Tokens) gin.HandlerFunc {
 
 // RequireAuthLimited seperti RequireAuth, ditambah batas request tulis (selain GET): perMinute per akun,
 // satu ember untuk semua endpoint tulis. Dipasang sebagai requireAuth standar supaya tak ada endpoint tulis yang terlewat.
-func RequireAuthLimited(tokens *auth.Tokens, perMinute int) gin.HandlerFunc {
+// checker boleh nil (tanpa cek database; dipakai test unit).
+func RequireAuthLimited(tokens *auth.Tokens, perMinute int, checker *SessionChecker) gin.HandlerFunc {
 	limit := RateLimit(perMinute, time.Minute, ByUser)
 	return func(c *gin.Context) {
-		if !authenticate(c, tokens) {
+		if !authenticate(c, tokens, checker) {
 			return
 		}
 		if c.Request.Method == http.MethodGet {
@@ -103,8 +108,8 @@ func RequireAuthLimited(tokens *auth.Tokens, perMinute int) gin.HandlerFunc {
 	}
 }
 
-// authenticate menulis 401 dan mengembalikan false kalau token tidak valid.
-func authenticate(c *gin.Context, tokens *auth.Tokens) bool {
+// authenticate menulis 401 dan mengembalikan false kalau token tidak valid, akun sudah tidak ada, atau sesinya dicabut.
+func authenticate(c *gin.Context, tokens *auth.Tokens, checker *SessionChecker) bool {
 	raw, ok := strings.CutPrefix(c.GetHeader("Authorization"), "Bearer ")
 	if !ok || raw == "" {
 		Error(c, http.StatusUnauthorized, "unauthorized", "header Authorization Bearer wajib diisi")
@@ -120,8 +125,26 @@ func authenticate(c *gin.Context, tokens *auth.Tokens) bool {
 		Error(c, http.StatusUnauthorized, "unauthorized", "token tidak valid atau kedaluwarsa")
 		return false
 	}
+	isAdmin := claims.IsAdmin
+	if checker != nil {
+		st, ok, err := checker.Check(c.Request.Context(), uid)
+		if err != nil {
+			slog.Error("cek sesi gagal", "request_id", c.GetString("request_id"), "err", err)
+			Error(c, http.StatusServiceUnavailable, "unavailable", "layanan sementara tidak tersedia")
+			return false
+		}
+		issued := time.Time{}
+		if claims.IssuedAt != nil {
+			issued = claims.IssuedAt.Time
+		}
+		if !ok || issued.Before(st.ValidAfter.Truncate(time.Second)) {
+			Error(c, http.StatusUnauthorized, "unauthorized", "sesi berakhir, silakan login ulang")
+			return false
+		}
+		isAdmin = st.IsAdmin // hak admin mengikuti database, bukan klaim token
+	}
 	c.Set(ctxUserID, uid)
-	c.Set(ctxIsAdmin, claims.IsAdmin)
+	c.Set(ctxIsAdmin, isAdmin)
 	return true
 }
 

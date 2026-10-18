@@ -18,8 +18,8 @@ GET {{baseUrl}}/home?lat={{lat}}&lng={{lng}}&tab=human
 GET {{baseUrl}}/me/vouchers
 Authorization: Bearer {{login.response.body.$.data.access_token}}
 
-### Klaim voucher (204; kedua kali 409)
-POST {{baseUrl}}/vouchers/SISAGUNA10/claim
+### Klaim voucher PERTAMA (204; kedua kali 409). Voucher dev: HEMAT5K (sudah diklaim Budi), SELAMAT20, PERTAMA, PAKAN10. SISAGUNA10 hanya ada di seed produksi
+POST {{baseUrl}}/vouchers/PERTAMA/claim
 Authorization: Bearer {{login.response.body.$.data.access_token}}
 
 ### Quote (tidak mengubah data). Ganti listing_id/merchant_id kalau perlu.
@@ -31,7 +31,7 @@ Content-Type: application/json
 {
   "merchant_id": "{{home.response.body.$.data.nearby[0].merchant.id}}",
   "lines": [{ "listing_id": "{{home.response.body.$.data.nearby[0].id}}", "quantity": 2 }],
-  "voucher_code": "SISAGUNA10"
+  "voucher_code": "PERTAMA"
 }
 
 ### Buat pesanan. Idempotency-Key wajib; kirim ulang dengan key yang sama = order yang sama (200).
@@ -44,7 +44,7 @@ Content-Type: application/json
 {
   "merchant_id": "{{home.response.body.$.data.nearby[0].merchant.id}}",
   "lines": [{ "listing_id": "{{home.response.body.$.data.nearby[0].id}}", "quantity": 2 }],
-  "voucher_code": "SISAGUNA10",
+  "voucher_code": "PERTAMA",
   "payment_kind": "cash",
   "note": "Tanpa sambal",
   "expected_total": {{quote.response.body.$.data.total}}

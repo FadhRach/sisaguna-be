@@ -12,6 +12,15 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const bumpResetAttempts = `-- name: BumpResetAttempts :exec
+UPDATE password_resets SET attempts = attempts + 1 WHERE id = $1
+`
+
+func (q *Queries) BumpResetAttempts(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, bumpResetAttempts, id)
+	return err
+}
+
 const createRefreshToken = `-- name: CreateRefreshToken :one
 INSERT INTO refresh_tokens (user_id, family_id, token_hash, user_agent, expires_at)
 VALUES ($1, $2, $3, $4, $5)
@@ -46,6 +55,39 @@ func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshToken
 		&i.RevokedAt,
 		&i.CreatedAt,
 	)
+	return i, err
+}
+
+const createReset = `-- name: CreateReset :exec
+INSERT INTO password_resets (user_id, code_hash, expires_at) VALUES ($1, $2, now() + interval '15 minutes')
+`
+
+type CreateResetParams struct {
+	UserID   uuid.UUID
+	CodeHash string
+}
+
+func (q *Queries) CreateReset(ctx context.Context, arg CreateResetParams) error {
+	_, err := q.db.Exec(ctx, createReset, arg.UserID, arg.CodeHash)
+	return err
+}
+
+const getActiveResetForUpdate = `-- name: GetActiveResetForUpdate :one
+SELECT id, code_hash, attempts FROM password_resets
+WHERE user_id = $1 AND used_at IS NULL AND expires_at > now()
+ORDER BY created_at DESC LIMIT 1 FOR UPDATE
+`
+
+type GetActiveResetForUpdateRow struct {
+	ID       uuid.UUID
+	CodeHash string
+	Attempts int16
+}
+
+func (q *Queries) GetActiveResetForUpdate(ctx context.Context, userID uuid.UUID) (GetActiveResetForUpdateRow, error) {
+	row := q.db.QueryRow(ctx, getActiveResetForUpdate, userID)
+	var i GetActiveResetForUpdateRow
+	err := row.Scan(&i.ID, &i.CodeHash, &i.Attempts)
 	return i, err
 }
 
@@ -89,6 +131,36 @@ func (q *Queries) GetRefreshTokenByHashForUpdate(ctx context.Context, tokenHash 
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const hasRecentReset = `-- name: HasRecentReset :one
+SELECT EXISTS (SELECT 1 FROM password_resets WHERE user_id = $1 AND created_at > now() - interval '60 seconds')::bool
+`
+
+// Jeda 60 detik per akun: mencegah membanjiri email pengguna.
+func (q *Queries) HasRecentReset(ctx context.Context, userID uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, hasRecentReset, userID)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const invalidateResets = `-- name: InvalidateResets :exec
+UPDATE password_resets SET used_at = now() WHERE user_id = $1 AND used_at IS NULL
+`
+
+func (q *Queries) InvalidateResets(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, invalidateResets, userID)
+	return err
+}
+
+const markResetUsed = `-- name: MarkResetUsed :exec
+UPDATE password_resets SET used_at = now() WHERE id = $1
+`
+
+func (q *Queries) MarkResetUsed(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, markResetUsed, id)
+	return err
 }
 
 const revokeAllUserRefreshTokens = `-- name: RevokeAllUserRefreshTokens :exec

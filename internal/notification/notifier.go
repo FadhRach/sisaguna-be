@@ -42,5 +42,5 @@ func Create(ctx context.Context, q *sqlc.Queries, n New) error {
 		return fmt.Errorf("notification create: %w", err)
 	}
 	return events.Emit(ctx, q, "notification.created",
-		map[string]any{"notification_id": row.ID, "type": row.Type, "title": row.Title}, []uuid.UUID{n.UserID}, "")
+		map[string]any{"notification_id": row.ID, "type": row.Type, "title": row.Title, "body": n.Body}, []uuid.UUID{n.UserID}, "")
 }

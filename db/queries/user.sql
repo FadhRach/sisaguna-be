@@ -29,7 +29,12 @@ UPDATE users SET
 WHERE id = $1;
 
 -- name: UpdatePasswordHash :exec
-UPDATE users SET password_hash = $2 WHERE id = $1;
+-- sessions_valid_after = sekarang: semua access token lama ikut tidak berlaku.
+UPDATE users SET password_hash = $2, sessions_valid_after = now() WHERE id = $1;
 
 -- name: SetSelectedAddress :exec
 UPDATE users SET selected_address_id = $2 WHERE id = $1;
+
+-- name: GetAuthState :one
+-- Dicek middleware (dengan cache singkat) supaya akun yang dihapus / sesi yang dicabut tidak berlaku sampai token kedaluwarsa.
+SELECT is_admin, sessions_valid_after FROM users WHERE id = $1;

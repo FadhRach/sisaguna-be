@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/FadhRach/sisaguna-be/internal/platform/httpx"
+	"github.com/FadhRach/sisaguna-be/internal/platform/idempotency"
 	pmedia "github.com/FadhRach/sisaguna-be/internal/platform/media"
 	"github.com/FadhRach/sisaguna-be/internal/testutil"
 )
@@ -675,4 +676,50 @@ func TestOrderCreatedEventHidesPickupCode(t *testing.T) {
 			return
 		}
 	}
+}
+
+func TestOrderHardening(t *testing.T) {
+	e := setup(t)
+	s := e.store()
+
+	t.Run("idempotency-key dengan isi berbeda ditolak", func(t *testing.T) {
+		l := e.fx.Listing(s.merchant, testutil.ListingOpts{Stock: 10})
+		buyer := e.fx.User("Pembeli K")
+		if _, err := e.place(buyer, s.merchant, "same-key", "", line(l, 1)); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := e.place(buyer, s.merchant, "same-key", "", line(l, 2)); !errors.Is(err, idempotency.ErrKeyReused) {
+			t.Errorf("want ErrKeyReused, got %v", err)
+		}
+		if e.fx.Stock(l) != 9 {
+			t.Errorf("stock = %d, want 9", e.fx.Stock(l))
+		}
+	})
+
+	t.Run("maks pesanan aktif per pembeli", func(t *testing.T) {
+		l := e.fx.Listing(s.merchant, testutil.ListingOpts{Stock: 50})
+		buyer := e.fx.User("Penimbun")
+		for i := 0; i < maxActiveOrders; i++ {
+			if _, err := e.place(buyer, s.merchant, uuid.NewString(), "", line(l, 1)); err != nil {
+				t.Fatalf("order %d: %v", i, err)
+			}
+		}
+		if _, err := e.place(buyer, s.merchant, uuid.NewString(), "", line(l, 1)); !errors.Is(err, ErrTooManyActive) {
+			t.Errorf("want ErrTooManyActive, got %v", err)
+		}
+		if e.fx.Stock(l) != 50-maxActiveOrders {
+			t.Errorf("stock = %d", e.fx.Stock(l))
+		}
+	})
+
+	t.Run("nilai pesanan terlalu besar", func(t *testing.T) {
+		l := e.fx.Listing(s.merchant, testutil.ListingOpts{Price: 50_000_000, Orig: 60_000_000, Stock: 10})
+		buyer := e.fx.User("Borong")
+		if _, err := e.place(buyer, s.merchant, "big", "", line(l, 3)); !errors.Is(err, ErrOrderTooLarge) {
+			t.Errorf("want ErrOrderTooLarge, got %v", err)
+		}
+		if e.fx.Stock(l) != 10 {
+			t.Errorf("stock = %d, want 10", e.fx.Stock(l))
+		}
+	})
 }

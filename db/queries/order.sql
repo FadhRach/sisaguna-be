@@ -23,13 +23,13 @@ RETURNING stock;
 INSERT INTO orders (code, buyer_id, merchant_id, status, fulfillment, payment_kind, payment_status, paid_at, note, subtotal, original_total,
                     voucher_code, voucher_discount, service_fee, delivery_fee, delivery_discount, total, commission, merchant_payout,
                     delivery_courier, delivery_speed, delivery_eta_min, delivery_eta_max, delivery_address,
-                    pickup_by, pickup_end, idempotency_key, voucher_funded_by)
+                    pickup_by, pickup_end, idempotency_key, voucher_funded_by, request_hash)
 VALUES (@code, @buyer_id, @merchant_id, 'ready', @fulfillment::fulfillment, @payment_kind::payment_kind, @payment_status::payment_status,
         CASE WHEN @payment_status::payment_status = 'paid' THEN now() END, @note, @subtotal, @original_total,
         sqlc.narg('voucher_code'), @voucher_discount, @service_fee, @delivery_fee, @delivery_discount, @total, @commission, @merchant_payout,
         sqlc.narg('delivery_courier')::courier, sqlc.narg('delivery_speed')::delivery_speed, sqlc.narg('delivery_eta_min')::smallint, sqlc.narg('delivery_eta_max')::smallint,
         sqlc.narg('delivery_address')::jsonb,
-        sqlc.narg('pickup_by')::timestamptz, @pickup_end, @idempotency_key, sqlc.narg('voucher_funded_by'))
+        sqlc.narg('pickup_by')::timestamptz, @pickup_end, @idempotency_key, sqlc.narg('voucher_funded_by'), sqlc.narg('request_hash'))
 RETURNING id;
 
 -- name: GetDeliveryTarget :one
@@ -49,7 +49,7 @@ INSERT INTO order_items (order_id, listing_id, title, tier, unit, image_media_id
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
 
 -- name: GetOrderByIdempotency :one
-SELECT id FROM orders WHERE buyer_id = $1 AND idempotency_key = $2;
+SELECT id, coalesce(request_hash, '')::text AS request_hash FROM orders WHERE buyer_id = $1 AND idempotency_key = $2;
 
 -- name: GetOrderView :one
 SELECT sqlc.embed(o), m.name AS merchant_name, m.owner_id AS merchant_owner_id, u.name AS buyer_name,
@@ -145,3 +145,10 @@ SELECT order_id, stars, tags, comment, created_at FROM reviews WHERE order_id = 
 
 -- name: ListOrderComplaints :many
 SELECT id, order_id, reason, detail, status, resolution_note, created_at FROM complaints WHERE order_id = ANY(@ids::uuid[]);
+
+-- name: LockBuyerOrders :exec
+-- Serialisasi checkout satu pembeli supaya batas pesanan aktif tidak bisa dilewati dengan request paralel.
+SELECT pg_advisory_xact_lock(hashtextextended(@buyer::text, 0));
+
+-- name: CountActiveOrders :one
+SELECT count(*)::int FROM orders WHERE buyer_id = $1 AND status IN ('ready', 'pending_payment');

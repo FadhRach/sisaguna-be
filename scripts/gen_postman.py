@@ -114,6 +114,11 @@ folders.append(("02 · Akun & Profil (pembeli)", [
       save=login_save("buyer"), desc="Refresh token lama hangus. Kirim token lama lagi = seluruh sesi dicabut (login ulang)."),
     R("Ganti password", "POST", "/api/v1/auth/password", "new", body={"current": "Password123!", "new": "PasswordBaru123!"}, status=200,
       desc="Dijalankan pada akun baru (new_token) supaya akun seed aman."),
+    R("Lupa password (202, jawaban sama untuk email tak terdaftar)", "POST", "/api/v1/auth/forgot-password",
+      body={"email": "tidak-terdaftar@example.com"}, status=202,
+      desc="Kode 6 digit dikirim ke email (EMAIL_MODE=log: tercetak di log server). Respons tidak membocorkan apakah email terdaftar."),
+    R("Reset password dengan kode salah (400 invalid_reset_code)", "POST", "/api/v1/auth/reset-password",
+      body={"email": "tidak-terdaftar@example.com", "code": "000000", "new_password": "PasswordBaru123!"}, status=400),
     R("Logout", "POST", "/api/v1/auth/logout", "buyer", body={"refresh_token": "{{buyer_refresh}}"}, status=204,
       desc="Setelah ini jalankan lagi 'Login pembeli' di folder 01."),
 ]))
@@ -168,7 +173,7 @@ folders.append(("05 · Voucher", [
 ]))
 
 cart = {"merchant_id": "{{merchant_id}}", "lines": [{"listing_id": "{{listing_id}}", "quantity": 2}]}
-order_body = lambda **kw: {**cart, "payment_kind": "cash", "note": "Tanpa sambal", **kw}
+order_body = lambda **kw: {**cart, "payment_kind": "cash", "note": "Tanpa sambal", "expected_total": "@@{{expected_total}}@@", **kw}
 folders.append(("06 · Checkout & Pesanan (pembeli)", [
     R("Quote (rincian harga, tidak mengubah data)", "POST", "/api/v1/checkout/quote", "buyer", body=cart, status=200,
       save=set_vars(expected_total="d.total"), desc="Menyimpan total sebagai expected_total untuk request berikutnya."),
@@ -180,6 +185,12 @@ folders.append(("06 · Checkout & Pesanan (pembeli)", [
       desc="expected_total dikirim sebagai string template; Postman menggantinya dengan angka. Idempotency-Key baru di setiap kirim."),
     R("Ulangi request yang sama (200, order yang sama)", "POST", "/api/v1/orders", "buyer", body=order_body(expected_total="@@{{expected_total}}@@"), status=200,
       headers={"Idempotency-Key": "{{idem_order}}"}, desc="Key sama dengan 'Buat pesanan' → order lama dikembalikan, stok tidak berkurang lagi."),
+    R("Key sama, isi beda (422 idempotency_key_reused)", "POST", "/api/v1/orders", "buyer",
+      body=order_body(lines=[{"listing_id": "{{listing_id}}", "quantity": 1}]), status=422, headers={"Idempotency-Key": "{{idem_order}}"},
+      desc="Idempotency-Key yang sama dengan isi request berbeda ditolak, bukan mengembalikan order lama."),
+    R("Tanpa expected_total (400 validation_failed)", "POST", "/api/v1/orders", "buyer",
+      body={k: v for k, v in order_body().items() if k != "expected_total"}, status=400, headers={"Idempotency-Key": "{{idem_bad}}"},
+      pre=new_idem.format(v="idem_bad"), desc="expected_total wajib: server membandingkan dengan harga hitungannya."),
     R("Tanpa Idempotency-Key (400)", "POST", "/api/v1/orders", "buyer", body=order_body(), status=400),
     R("Harga berubah (409 price_changed)", "POST", "/api/v1/orders", "buyer", body=order_body(expected_total=1), status=409,
       headers={"Idempotency-Key": "{{idem_bad}}"}, pre=new_idem.format(v="idem_bad"),
@@ -421,14 +432,16 @@ folders.append(("16 · Pengiriman & Pembayaran Tiruan (PARTNERS_MODE=dummy)", [
     R("Mitra melihat pesanan kirim", "GET", "/api/v1/me/merchant/orders?status=ready", "seller", status=200),
     R("Batalkan -> pembayaran dikembalikan (refunded)", "POST", "/api/v1/orders/{{order_id_ship}}/cancel", "buyer", body={"reason": "Uji refund"}, status=200,
       save="pm.test('refunded', () => pm.expect(pm.response.json().data.payment.status).to.eql('refunded'));"),
+    R("Quote keranjang tunai (untuk pesanan OVO)", "POST", "/api/v1/checkout/quote", "buyer", body=cart, status=200,
+      save=set_vars(expected_total_cart="d.total")),
     R("e-wallet OVO belum ditautkan (422)", "POST", "/api/v1/orders", "buyer", status=422, headers={"Idempotency-Key": "{{idem_ship2}}"}, pre=new_idem.format(v="idem_ship2"),
-      body={**cart, "payment_kind": "ovo"}, desc="error.code = payment_method_not_linked. QRIS dan tunai selalu tersedia; GoPay/OVO/DANA harus ditautkan dulu."),
+      body={**cart, "payment_kind": "ovo", "expected_total": "@@{{expected_total_cart}}@@"}, desc="error.code = payment_method_not_linked. QRIS dan tunai selalu tersedia; GoPay/OVO/DANA harus ditautkan dulu."),
     R("Metode pembayaran saya", "GET", "/api/v1/me/payment-methods", "buyer", status=200),
     R("Tautkan OVO", "POST", "/api/v1/me/payment-methods", "buyer", body={"kind": "ovo", "phone": "081298765432"}, status=201,
       desc="Tiruan: tidak ada verifikasi ke OVO. Nomor disamarkan 0812 •••• 5432. Respons = daftar metode terbaru."),
     R("Jadikan OVO metode utama", "PUT", "/api/v1/me/payment-methods/default", "buyer", body={"kind": "ovo"}, status=200),
     R("Pesan dengan OVO (setelah ditautkan)", "POST", "/api/v1/orders", "buyer", status=201, headers={"Idempotency-Key": "{{idem_ship2}}"},
-      body={**cart, "payment_kind": "ovo"}, save=set_vars(order_id_ovo="d.id")),
+      body={**cart, "payment_kind": "ovo", "expected_total": "@@{{expected_total_cart}}@@"}, save=set_vars(order_id_ovo="d.id")),
     R("Lepas OVO (default kembali ke QRIS)", "DELETE", "/api/v1/me/payment-methods/ovo", "buyer", status=200,
       save="pm.test('QRIS default', () => pm.expect(pm.response.json().data.find(m => m.is_default).kind).to.eql('qris'));"),
     R("QRIS tidak bisa dilepas (422)", "DELETE", "/api/v1/me/payment-methods/qris", "buyer", status=422),
@@ -483,7 +496,7 @@ variables = {
 for k in ["buyer_token", "buyer_refresh", "seller_token", "seller_refresh", "admin_token", "pending_token", "new_token", "new_refresh", "pending_refresh", "admin_refresh",
           "expected_total", "order_id", "order_code", "order_id_2", "order_code_2", "order_id_3", "media_id", "private_media_id", "address_id",
           "listing_media_id", "my_listing_id", "new_merchant_id", "notification_id", "idem_order", "idem_order2", "idem_order3", "idem_bad", "idem_listing",
-          "idem_stale", "made_at", "stale_made_at", "address_kantor_id", "address_rumah_id", "expected_total_ship", "order_id_ship", "order_id_ovo", "idem_ship", "idem_ship2", "voucher_code", "voucher_expires", "complaint_id", "conversation_id", "client_id", "client_id_2", "last_message_id", "ws_ticket"]:
+          "idem_stale", "made_at", "stale_made_at", "address_kantor_id", "address_rumah_id", "expected_total_ship", "expected_total_cart", "order_id_ship", "order_id_ovo", "idem_ship", "idem_ship2", "voucher_code", "voucher_expires", "complaint_id", "conversation_id", "client_id", "client_id_2", "last_message_id", "ws_ticket"]:
     variables.setdefault(k, "")
 
 col = {

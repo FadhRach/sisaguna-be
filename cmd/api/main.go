@@ -49,6 +49,9 @@ func run() error {
 		Addr:              ":" + cfg.Port,
 		Handler:           a.Router,
 		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       3 * time.Minute, // cukup untuk upload video 30 MB di sinyal lambat; koneksi WebSocket tidak terpengaruh (di-hijack)
+		WriteTimeout:      2 * time.Minute,
+		IdleTimeout:       2 * time.Minute,
 	}
 	errCh := make(chan error, 1)
 	go func() { errCh <- srv.ListenAndServe() }()

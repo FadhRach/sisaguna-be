@@ -202,7 +202,7 @@ func TestMVPJourney(t *testing.T) {
 	if r := buyer.do("POST", "/api/v1/orders", stalePrice, "Idempotency-Key", "o-0"); r.Status != 409 || r.errCode() != "price_changed" || r.errField("total") != float64(25000) {
 		t.Errorf("price_changed: %d %v", r.Status, r.Body)
 	}
-	if r := buyer.do("POST", "/api/v1/orders", map[string]any{"merchant_id": merchantID, "lines": cart["lines"], "payment_kind": "qris"}, "Idempotency-Key", "o-q"); r.Status != 422 || r.errCode() != "payment_method_unavailable" {
+	if r := buyer.do("POST", "/api/v1/orders", map[string]any{"merchant_id": merchantID, "lines": cart["lines"], "payment_kind": "qris", "expected_total": 25000}, "Idempotency-Key", "o-q"); r.Status != 422 || r.errCode() != "payment_method_unavailable" {
 		t.Errorf("qris: %d %s", r.Status, r.errCode())
 	}
 	placed := buyer.do("POST", "/api/v1/orders", orderBody, "Idempotency-Key", "o-1")

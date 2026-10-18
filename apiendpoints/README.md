@@ -4,7 +4,7 @@ Folder ini berisi semua yang dibutuhkan untuk mencoba API secara manual:
 
 | File | Isi |
 | --- | --- |
-| `SisaGuna.postman_collection.json` | Koleksi Postman (108 request, berurutan per peran, token tersimpan otomatis) |
+| `SisaGuna.postman_collection.json` | Koleksi Postman (191 request, berurutan per peran, token tersimpan otomatis) |
 | `auth.http`, `me.http`, `catalog.http`, `checkout.http`, `mitra.http`, `admin.http` | Versi ringkas untuk VS Code REST Client (`humao.rest-client`) |
 
 ## 1. Menyalakan backend di Mac (sekali jalan)
@@ -198,12 +198,12 @@ Daftar bertambah (order, notifikasi) memakai `?cursor=` dari `meta.next_cursor`;
 | 400 | `invalid_cart` | Keranjang campur toko, ada item dobel, atau listing tidak ada |
 | 400 | `voucher_*` validasi (`validation_failed` + `detail`), `video_not_allowed`, `invalid_media` / `invalid_listing` | Foto bukan milikmu/sudah dipakai/jenis salah; produk chat bukan milik toko itu |
 | 401 | `unauthorized` / `invalid_credentials` / `invalid_refresh_token` / `invalid_ticket` | Token bermasalah, login salah, atau tiket WebSocket habis/terpakai |
-| 403 | `merchant_not_approved` / `merchant_required` / `own_merchant` (juga chat ke toko sendiri) / `forbidden` | Peran tidak mengizinkan |
+| 403 | `merchant_not_approved` / `merchant_inactive` (toko ditangguhkan/ditolak tidak bisa mengubah listing) / `merchant_required` / `own_merchant` (juga chat ke toko sendiri) / `forbidden` | Peran tidak mengizinkan |
 | 404 | `*_not_found` (termasuk `conversation_not_found`, `complaint_not_found`), `merchant_unavailable`, `voucher_unavailable` | Tidak ada, atau bukan milikmu |
 | 422 | `payment_method_not_linked`, `payment_method_fixed`, `delivery_unavailable` (+ `reason`) | E-wallet belum ditautkan; QRIS/tunai tidak bisa dilepas; pengiriman ditolak |
-| 409 | `price_changed`, `out_of_stock`, `listing_unavailable`, `invalid_order_state`, `cancel_window_closed`, `email_taken`, `merchant_exists`, `voucher_already_claimed`, `already_reviewed`, `already_complained`, `order_not_completed`, `review_window_closed`, `complaint_window_closed`, `complaint_closed` | Konflik status/stok/batas waktu |
-| 413 / 415 | `payload_too_large`, `file_too_large`, `unsupported_media_type` | Body > 1 MB, foto > 8 MB, bukan JPEG/PNG/WebP |
-| 422 | `video_too_long`, `corrupt_video`, `past_safe_window`, `checklist_incomplete`, `invalid_price`, `made_at_required`, `payment_method_unavailable`, `delivery_unavailable`, `voucher_*`, `wrong_code` | Aturan bisnis menolak |
+| 409 | `price_changed`, `out_of_stock`, `listing_unavailable`, `invalid_order_state`, `cancel_window_closed`, `too_many_active_orders`, `email_taken`, `merchant_exists`, `voucher_already_claimed`, `already_reviewed`, `already_complained`, `order_not_completed`, `review_window_closed`, `complaint_window_closed`, `complaint_closed` | Konflik status/stok/batas waktu |
+| 413 / 415 | `payload_too_large` (juga untuk multipart di endpoint non-upload), `file_too_large`, `unsupported_media_type` | Body > 1 MB, foto > 8 MB, bukan JPEG/PNG/WebP |
+| 422 | `video_too_long`, `corrupt_video`, `past_safe_window`, `checklist_incomplete`, `invalid_price`, `made_at_required`, `idempotency_key_reused` (key sama, isi beda), `order_too_large` (> Rp100.000.000), `invalid_reset_code`, `payment_method_unavailable`, `delivery_unavailable`, `voucher_*`, `wrong_code` | Aturan bisnis menolak |
 | 429 | `rate_limited`, `too_many_attempts` | Terlalu sering (chat 20 pesan/menit per akun) |
 
 ## 7. curl cepat

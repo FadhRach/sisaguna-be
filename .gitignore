@@ -26,3 +26,7 @@ claude.md
 
 # Repo Android (git sendiri) yang diletakkan di sini untuk disalin datanya; bukan bagian repo backend
 /SisaGuna/
+
+# Binary hasil go build di root
+/seed
+/sisaguna

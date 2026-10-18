@@ -66,3 +66,15 @@ Content-Type: application/json
   "current": "Password123!",
   "new": "PasswordBaru123!"
 }
+
+### Lupa password: selalu 202 (email terdaftar maupun tidak). Dev: kode 6 digit tercetak di log server (EMAIL_MODE=log)
+POST {{baseUrl}}/auth/forgot-password
+Content-Type: application/json
+
+{ "email": "budi.santoso@gmail.com" }
+
+### Atur ulang password dengan kode dari email (berlaku 15 menit, 5 kali salah = kode mati). Berhasil: sesi baru, semua sesi lama dicabut
+POST {{baseUrl}}/auth/reset-password
+Content-Type: application/json
+
+{ "email": "budi.santoso@gmail.com", "code": "123456", "new_password": "PasswordBaru123!" }

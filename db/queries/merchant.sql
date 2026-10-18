@@ -110,3 +110,6 @@ WITH avail AS (
       AND (NOT @available_only::bool OR a.n > 0)
 )
 SELECT * FROM rows ORDER BY CASE WHEN distance_m >= 0 THEN distance_m END ASC NULLS LAST, name, id LIMIT @lim;
+
+-- name: ListAdminIDs :many
+SELECT id FROM users WHERE is_admin;

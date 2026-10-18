@@ -7,12 +7,16 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/FadhRach/sisaguna-be/internal/platform/httpx"
+	"github.com/FadhRach/sisaguna-be/internal/platform/idempotency"
 )
 
 var errRules = []httpx.ErrorRule{
 	{Err: ErrDeliveryUnavailable, Status: http.StatusUnprocessableEntity, Code: "delivery_unavailable"},
 	{Err: ErrPaymentUnavailable, Status: http.StatusUnprocessableEntity, Code: "payment_method_unavailable"},
 	{Err: ErrPaymentNotLinked, Status: http.StatusUnprocessableEntity, Code: "payment_method_not_linked"},
+	{Err: ErrTooManyActive, Status: http.StatusConflict, Code: "too_many_active_orders"},
+	{Err: ErrOrderTooLarge, Status: http.StatusUnprocessableEntity, Code: "order_too_large"},
+	{Err: idempotency.ErrKeyReused, Status: http.StatusUnprocessableEntity, Code: "idempotency_key_reused"},
 	{Err: ErrAddressNotFound, Status: http.StatusNotFound, Code: "address_not_found"},
 	{Err: ErrMerchantUnavailable, Status: http.StatusNotFound, Code: "merchant_unavailable"},
 	{Err: ErrMerchantRequired, Status: http.StatusForbidden, Code: "merchant_required"},

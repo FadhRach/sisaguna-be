@@ -27,7 +27,7 @@ func (q *Queries) CountUnreadNotifications(ctx context.Context, userID uuid.UUID
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (name, email, phone, password_hash)
 VALUES ($1, $2, $3, $4)
-RETURNING id, name, email, phone, password_hash, is_admin, avatar_key, photo_media_id, location_label, selected_address_id, created_at, updated_at, impact_base_portions, impact_base_feed_kg, impact_base_saved_rupiah
+RETURNING id, name, email, phone, password_hash, is_admin, avatar_key, photo_media_id, location_label, selected_address_id, created_at, updated_at, impact_base_portions, impact_base_feed_kg, impact_base_saved_rupiah, sessions_valid_after
 `
 
 type CreateUserParams struct {
@@ -61,12 +61,30 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.ImpactBasePortions,
 		&i.ImpactBaseFeedKg,
 		&i.ImpactBaseSavedRupiah,
+		&i.SessionsValidAfter,
 	)
 	return i, err
 }
 
+const getAuthState = `-- name: GetAuthState :one
+SELECT is_admin, sessions_valid_after FROM users WHERE id = $1
+`
+
+type GetAuthStateRow struct {
+	IsAdmin            bool
+	SessionsValidAfter pgtype.Timestamptz
+}
+
+// Dicek middleware (dengan cache singkat) supaya akun yang dihapus / sesi yang dicabut tidak berlaku sampai token kedaluwarsa.
+func (q *Queries) GetAuthState(ctx context.Context, id uuid.UUID) (GetAuthStateRow, error) {
+	row := q.db.QueryRow(ctx, getAuthState, id)
+	var i GetAuthStateRow
+	err := row.Scan(&i.IsAdmin, &i.SessionsValidAfter)
+	return i, err
+}
+
 const getProfile = `-- name: GetProfile :one
-SELECT u.id, u.name, u.email, u.phone, u.password_hash, u.is_admin, u.avatar_key, u.photo_media_id, u.location_label, u.selected_address_id, u.created_at, u.updated_at, u.impact_base_portions, u.impact_base_feed_kg, u.impact_base_saved_rupiah, m.path AS photo_path
+SELECT u.id, u.name, u.email, u.phone, u.password_hash, u.is_admin, u.avatar_key, u.photo_media_id, u.location_label, u.selected_address_id, u.created_at, u.updated_at, u.impact_base_portions, u.impact_base_feed_kg, u.impact_base_saved_rupiah, u.sessions_valid_after, m.path AS photo_path
 FROM users u
 LEFT JOIN media m ON m.id = u.photo_media_id
 WHERE u.id = $1
@@ -88,6 +106,7 @@ type GetProfileRow struct {
 	ImpactBasePortions    int32
 	ImpactBaseFeedKg      int32
 	ImpactBaseSavedRupiah int32
+	SessionsValidAfter    pgtype.Timestamptz
 	PhotoPath             pgtype.Text
 }
 
@@ -110,13 +129,14 @@ func (q *Queries) GetProfile(ctx context.Context, id uuid.UUID) (GetProfileRow, 
 		&i.ImpactBasePortions,
 		&i.ImpactBaseFeedKg,
 		&i.ImpactBaseSavedRupiah,
+		&i.SessionsValidAfter,
 		&i.PhotoPath,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, name, email, phone, password_hash, is_admin, avatar_key, photo_media_id, location_label, selected_address_id, created_at, updated_at, impact_base_portions, impact_base_feed_kg, impact_base_saved_rupiah FROM users WHERE email = $1
+SELECT id, name, email, phone, password_hash, is_admin, avatar_key, photo_media_id, location_label, selected_address_id, created_at, updated_at, impact_base_portions, impact_base_feed_kg, impact_base_saved_rupiah, sessions_valid_after FROM users WHERE email = $1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -138,12 +158,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.ImpactBasePortions,
 		&i.ImpactBaseFeedKg,
 		&i.ImpactBaseSavedRupiah,
+		&i.SessionsValidAfter,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, name, email, phone, password_hash, is_admin, avatar_key, photo_media_id, location_label, selected_address_id, created_at, updated_at, impact_base_portions, impact_base_feed_kg, impact_base_saved_rupiah FROM users WHERE id = $1
+SELECT id, name, email, phone, password_hash, is_admin, avatar_key, photo_media_id, location_label, selected_address_id, created_at, updated_at, impact_base_portions, impact_base_feed_kg, impact_base_saved_rupiah, sessions_valid_after FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
@@ -165,6 +186,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.ImpactBasePortions,
 		&i.ImpactBaseFeedKg,
 		&i.ImpactBaseSavedRupiah,
+		&i.SessionsValidAfter,
 	)
 	return i, err
 }
@@ -184,7 +206,7 @@ func (q *Queries) SetSelectedAddress(ctx context.Context, arg SetSelectedAddress
 }
 
 const updatePasswordHash = `-- name: UpdatePasswordHash :exec
-UPDATE users SET password_hash = $2 WHERE id = $1
+UPDATE users SET password_hash = $2, sessions_valid_after = now() WHERE id = $1
 `
 
 type UpdatePasswordHashParams struct {
@@ -192,6 +214,7 @@ type UpdatePasswordHashParams struct {
 	PasswordHash string
 }
 
+// sessions_valid_after = sekarang: semua access token lama ikut tidak berlaku.
 func (q *Queries) UpdatePasswordHash(ctx context.Context, arg UpdatePasswordHashParams) error {
 	_, err := q.db.Exec(ctx, updatePasswordHash, arg.ID, arg.PasswordHash)
 	return err

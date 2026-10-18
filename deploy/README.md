@@ -40,6 +40,9 @@ Isi `.env` (yang dipakai produksi):
 | `JWT_SECRET` | `openssl rand -base64 48` (minimal 32 byte) |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME` | akun admin pertama (dibuat seeder) |
 | `PARTNERS_MODE` | `dummy` untuk menguji app dengan kurir (GoSend, Grab, SPX, Lalamove) dan pembayaran QRIS/e-wallet **tiruan**; kosong/`off` = hanya tunai + pickup (default produksi). **Jangan biarkan `dummy` menyala saat ada penjual dan pembeli sungguhan**: pesanan non-tunai tampil `paid` padahal tidak ada uang yang masuk |
+| `MERCHANT_AUTO_APPROVE` | `true` = toko baru langsung `approved` (hanya VPS uji). Kosong/`false` (default) = menunggu admin; admin mendapat notifikasi "Toko baru menunggu persetujuan" |
+| `EMAIL_MODE`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | email kode lupa password. Tanpa `SMTP_HOST` di produksi, `EMAIL_MODE` jadi `off`: endpoint tetap menjawab 202 tetapi tidak ada email terkirim. Untuk uji tanpa SMTP: `EMAIL_MODE=log` mencetak kode ke `docker compose logs api` (jangan dipakai bersama pengguna sungguhan) |
+| `FCM_CREDENTIALS_FILE`, `FCM_PROJECT_ID` | push FCM. Taruh JSON service account Firebase di `/srv/sisaguna/secrets/fcm.json` (`chmod 600`, bisa dibaca user API) lalu isi `FCM_CREDENTIALS_FILE=/run/secrets/fcm.json`. Kosong = push mati |
 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | opsional tapi disarankan. Kalau keempatnya terisi: foto disalin ke R2 tiap menit dan backup harian dikirim ke R2 |
 
 `DATABASE_URL` dan `POSTGRES_PORT` di `.env.example` hanya untuk development lokal; compose produksi menyusun sendiri alamat Postgres di jaringan Docker.

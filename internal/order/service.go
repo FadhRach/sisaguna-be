@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,6 +23,7 @@ import (
 	"github.com/FadhRach/sisaguna-be/internal/platform/apperr"
 	"github.com/FadhRach/sisaguna-be/internal/platform/database"
 	"github.com/FadhRach/sisaguna-be/internal/platform/events"
+	"github.com/FadhRach/sisaguna-be/internal/platform/idempotency"
 	pmedia "github.com/FadhRach/sisaguna-be/internal/platform/media"
 )
 
@@ -29,6 +32,8 @@ var (
 	ErrPaymentUnavailable  = errors.New("metode pembayaran belum tersedia, gunakan tunai")
 	ErrPaymentNotLinked    = errors.New("e-wallet belum ditautkan, tautkan dulu di metode pembayaran")
 	ErrAddressNotFound     = errors.New("alamat tidak ditemukan")
+	ErrTooManyActive       = errors.New("terlalu banyak pesanan yang belum diambil, selesaikan atau batalkan dulu")
+	ErrOrderTooLarge       = errors.New("nilai pesanan melebihi batas Rp100.000.000")
 	ErrMerchantUnavailable = errors.New("toko tidak tersedia")
 	ErrMerchantRequired    = errors.New("akun ini belum punya toko")
 	ErrOwnMerchant         = errors.New("tidak bisa memesan dari toko sendiri")
@@ -47,7 +52,11 @@ var (
 	ErrTooManyAttempts     = errors.New("terlalu banyak kode salah, coba lagi 10 menit lagi")
 )
 
-const maxCodeAttempts = 5
+const (
+	maxCodeAttempts = 5
+	maxActiveOrders = 5           // pesanan ready sekaligus per pembeli; mencegah menimbun stok
+	maxOrderTotal   = 100_000_000 // Rp; jauh di bawah batas int32 kolom uang
+)
 
 var wib = time.FixedZone("WIB", 7*60*60)
 
@@ -80,13 +89,26 @@ func (s *Service) Quote(ctx context.Context, buyer uuid.UUID, req QuoteRequest) 
 // Place membuat order dalam satu transaksi (CLAUDE.md aturan 2). created=false berarti Idempotency-Key
 // sudah pernah dipakai dan order lama dikembalikan.
 func (s *Service) Place(ctx context.Context, buyer uuid.UUID, key string, req PlaceRequest) (id uuid.UUID, created bool, err error) {
+	hash := requestHash(req)
 	if existing, err := s.repo.q.GetOrderByIdempotency(ctx, sqlc.GetOrderByIdempotencyParams{BuyerID: buyer, IdempotencyKey: key}); err == nil {
-		return existing, false, nil
+		if err := idempotency.Check(existing.RequestHash, hash); err != nil {
+			return uuid.Nil, false, err
+		}
+		return existing.ID, false, nil
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return uuid.Nil, false, fmt.Errorf("order service place: %w", err)
 	}
 
 	err = s.repo.InTx(ctx, func(r *Repository) error {
+		// satu pembeli diproses berurutan supaya batas pesanan aktif tidak bisa dilewati dengan request paralel
+		if err := r.q.LockBuyerOrders(ctx, buyer.String()); err != nil {
+			return err
+		}
+		if n, err := r.q.CountActiveOrders(ctx, buyer); err != nil {
+			return err
+		} else if n >= maxActiveOrders {
+			return ErrTooManyActive
+		}
 		p, err := s.price(ctx, r.q, buyer, req.QuoteRequest, true)
 		if err != nil {
 			return err
@@ -103,12 +125,15 @@ func (s *Service) Place(ctx context.Context, buyer uuid.UUID, key string, req Pl
 		if err != nil {
 			return err
 		}
-		id, err = s.persist(ctx, r, buyer, key, req.Note, kind, p)
+		id, err = s.persist(ctx, r, buyer, key, req.Note, kind, hash, p)
 		return err
 	})
 	if database.IsUniqueViolation(err) { // dua request dengan key sama berbarengan
 		if existing, e := s.repo.q.GetOrderByIdempotency(ctx, sqlc.GetOrderByIdempotencyParams{BuyerID: buyer, IdempotencyKey: key}); e == nil {
-			return existing, false, nil
+			if e := idempotency.Check(existing.RequestHash, hash); e != nil {
+				return uuid.Nil, false, e
+			}
+			return existing.ID, false, nil
 		}
 	}
 	if err != nil {
@@ -118,7 +143,7 @@ func (s *Service) Place(ctx context.Context, buyer uuid.UUID, key string, req Pl
 }
 
 // persist: kurangi stok, pakai voucher, simpan order + item, kirim notifikasi dan event. Dipanggil dalam tx.
-func (s *Service) persist(ctx context.Context, r *Repository, buyer uuid.UUID, key, note, kind string, p *priced) (uuid.UUID, error) {
+func (s *Service) persist(ctx context.Context, r *Repository, buyer uuid.UUID, key, note, kind, hash string, p *priced) (uuid.UUID, error) {
 	for _, l := range p.lines {
 		stock, err := r.q.DecrementStock(ctx, sqlc.DecrementStockParams{ID: l.listing.ID, Qty: int32(l.qty)})
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -153,6 +178,7 @@ func (s *Service) persist(ctx context.Context, r *Repository, buyer uuid.UUID, k
 		Commission: int32(p.amounts.Commission), MerchantPayout: int32(p.amounts.MerchantPayout), // ongkir tidak dikenai komisi
 		Fulfillment: sqlc.FulfillmentPickup, PaymentKind: sqlc.PaymentKind(kind), PaymentStatus: status,
 		PickupEnd: pgtype.Timestamptz{Time: p.pickupEnd, Valid: true}, IdempotencyKey: key,
+		RequestHash: pgtype.Text{String: hash, Valid: true},
 	}
 	if p.delivery == nil {
 		ins.PickupBy = pgtype.Timestamptz{Time: p.pickupBy, Valid: true}
@@ -277,7 +303,7 @@ func wrapUnknown(ctx string, err error) error {
 	if err == nil {
 		return nil
 	}
-	for _, known := range []error{ErrDeliveryUnavailable, ErrPaymentUnavailable, ErrPaymentNotLinked, ErrAddressNotFound, ErrMerchantUnavailable, ErrMerchantRequired, ErrOwnMerchant,
+	for _, known := range []error{ErrDeliveryUnavailable, ErrPaymentUnavailable, ErrPaymentNotLinked, ErrAddressNotFound, ErrTooManyActive, ErrOrderTooLarge, idempotency.ErrKeyReused, ErrMerchantUnavailable, ErrMerchantRequired, ErrOwnMerchant,
 		ErrInvalidCart, ErrListingUnavailable, ErrOutOfStock, ErrVoucherNotClaimed, ErrVoucherUsed, ErrVoucherInvalid, ErrVoucherMinSpend,
 		ErrPriceChanged, ErrNotFound, ErrInvalidState, ErrCancelWindowClosed, ErrWrongCode, ErrTooManyAttempts} {
 		if errors.Is(err, known) {
@@ -300,4 +326,13 @@ func timePtr(t pgtype.Timestamptz) *time.Time {
 	}
 	u := t.Time.UTC()
 	return &u
+}
+
+// requestHash mengidentifikasi isi checkout untuk Idempotency-Key (urutan baris keranjang tidak berarti).
+func requestHash(req PlaceRequest) string {
+	lines := slices.Clone(req.Lines)
+	slices.SortFunc(lines, func(a, b LineInput) int { return strings.Compare(a.ListingID.String(), b.ListingID.String()) })
+	req.Lines = lines
+	req.VoucherCode = strings.ToUpper(strings.TrimSpace(req.VoucherCode))
+	return idempotency.Hash(req)
 }

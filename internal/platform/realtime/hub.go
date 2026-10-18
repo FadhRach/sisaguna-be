@@ -35,6 +35,8 @@ type Hub struct {
 	peers   Peers
 	tickets *tickets
 
+	offline func(user uuid.UUID, typ string, data json.RawMessage)
+
 	mu     sync.Mutex
 	users  map[uuid.UUID][]*client // tertua di depan
 	topics map[string]map[*client]struct{}
@@ -43,6 +45,10 @@ type Hub struct {
 func NewHub(peers Peers) *Hub {
 	return &Hub{peers: peers, tickets: newTickets(), users: map[uuid.UUID][]*client{}, topics: map[string]map[*client]struct{}{}}
 }
+
+// OnOffline mendaftarkan hook untuk penerima event yang tidak punya koneksi WebSocket (dipakai push FCM).
+// Dipanggil di goroutine sendiri; atur sebelum Run.
+func (h *Hub) OnOffline(fn func(user uuid.UUID, typ string, data json.RawMessage)) { h.offline = fn }
 
 // add mendaftarkan klien; kalau akun sudah punya maxConnsPerUser koneksi, yang tertua ditutup.
 func (h *Hub) add(c *client) {
@@ -134,7 +140,11 @@ func (h *Hub) dispatch(payload string) {
 	msg, _ := json.Marshal(outbound{Type: ev.Type, At: ev.At, Data: ev.Data})
 	h.mu.Lock()
 	var targets []*client
+	var away []uuid.UUID
 	for _, u := range ev.UserIDs {
+		if len(h.users[u]) == 0 {
+			away = append(away, u)
+		}
 		targets = append(targets, h.users[u]...)
 	}
 	if ev.Topic != "" {
@@ -145,6 +155,12 @@ func (h *Hub) dispatch(payload string) {
 	h.mu.Unlock()
 	for _, c := range targets {
 		c.enqueue(msg)
+	}
+	if h.offline != nil {
+		// shortcut: satu goroutine per penerima offline tanpa antrean, cukup untuk satu instance; pakai worker pool bila event ribuan per detik
+		for _, u := range away {
+			go h.offline(u, ev.Type, ev.Data)
+		}
 	}
 }
 

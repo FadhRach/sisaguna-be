@@ -31,6 +31,15 @@ services:
       MEDIA_ROOT: /data/media
       APP_TIMEZONE: ${APP_TIMEZONE:-Asia/Jakarta}
       PARTNERS_MODE: ${PARTNERS_MODE:-off}
+      MERCHANT_AUTO_APPROVE: ${MERCHANT_AUTO_APPROVE:-false}
+      EMAIL_MODE: ${EMAIL_MODE:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-SisaGuna <no-reply@sisaguna.id>}
+      FCM_CREDENTIALS_FILE: ${FCM_CREDENTIALS_FILE:-}
+      FCM_PROJECT_ID: ${FCM_PROJECT_ID:-}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       ADMIN_NAME: ${ADMIN_NAME:-Admin SisaGuna}
@@ -41,6 +50,7 @@ services:
       R2_ENDPOINT: ${R2_ENDPOINT:-}
     volumes:
       - ${MEDIA_HOST_DIR:-/srv/sisaguna/media}:/data/media
+      - ${SECRETS_HOST_DIR:-/srv/sisaguna/secrets}:/run/secrets:ro
     depends_on:
       migrate:
         condition: service_completed_successfully

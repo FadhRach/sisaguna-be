@@ -1,15 +1,15 @@
 -- name: InsertListing :one
 INSERT INTO listings (merchant_id, title, description, tier, unit, is_free, price_original, price, stock, halal, allergens,
-                      made_at, storage, safety_checks, safe_until, pickup_start, pickup_end, location, video_media_id, idempotency_key)
+                      made_at, storage, safety_checks, safe_until, pickup_start, pickup_end, location, video_media_id, idempotency_key, request_hash)
 SELECT m.id, @title, @description, @tier::listing_tier, @unit::quantity_unit, @is_free, sqlc.narg('price_original')::int, sqlc.narg('price')::int, @stock,
        coalesce(sqlc.narg('halal')::halal_status, m.halal), @allergens::allergen[],
        sqlc.narg('made_at')::timestamptz, @storage::storage_method, @safety_checks::safety_check[], sqlc.narg('safe_until')::timestamptz,
-       @pickup_start, @pickup_end, m.location, sqlc.narg('video_media_id')::uuid, @idempotency_key
+       @pickup_start, @pickup_end, m.location, sqlc.narg('video_media_id')::uuid, @idempotency_key, sqlc.narg('request_hash')
 FROM merchants m WHERE m.id = @merchant_id
 RETURNING id;
 
 -- name: GetListingByIdempotency :one
-SELECT id FROM listings WHERE merchant_id = $1 AND idempotency_key = $2;
+SELECT id, coalesce(request_hash, '')::text AS request_hash FROM listings WHERE merchant_id = $1 AND idempotency_key = $2;
 
 -- name: AttachListingMedia :exec
 INSERT INTO listing_media (listing_id, media_id, position) VALUES ($1, $2, $3);

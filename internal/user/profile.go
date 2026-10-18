@@ -68,7 +68,7 @@ func (s *Service) UpdateProfile(ctx context.Context, id uuid.UUID, in UpdateProf
 			p.SetPhoto = true
 			if in.PhotoMediaID.Valid {
 				m, err := r.Media(ctx, in.PhotoMediaID.Value)
-				if errors.Is(err, pgx.ErrNoRows) || (err == nil && (m.OwnerID != id || m.Visibility != sqlc.MediaVisibilityPublic)) {
+				if errors.Is(err, pgx.ErrNoRows) || (err == nil && (m.OwnerID != id || m.Visibility != sqlc.MediaVisibilityPublic || m.Kind != sqlc.MediaKindImage)) {
 					return ErrInvalidMedia
 				}
 				if err != nil {

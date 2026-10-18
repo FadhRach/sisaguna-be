@@ -968,6 +968,7 @@ type Listing struct {
 	IdempotencyKey string
 	CreatedAt      pgtype.Timestamptz
 	UpdatedAt      pgtype.Timestamptz
+	RequestHash    pgtype.Text
 }
 
 type ListingMedium struct {
@@ -1096,6 +1097,7 @@ type Order struct {
 	RemindedAt       pgtype.Timestamptz
 	VoucherFundedBy  pgtype.Text
 	DeliveryDiscount int32
+	RequestHash      pgtype.Text
 }
 
 type OrderCodeAttempt struct {
@@ -1114,6 +1116,16 @@ type OrderItem struct {
 	Quantity          int32
 	UnitPrice         int32
 	UnitOriginalPrice int32
+}
+
+type PasswordReset struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	CodeHash  string
+	Attempts  int16
+	ExpiresAt pgtype.Timestamptz
+	UsedAt    pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
 }
 
 type PaymentMethod struct {
@@ -1175,6 +1187,7 @@ type User struct {
 	ImpactBasePortions    int32
 	ImpactBaseFeedKg      int32
 	ImpactBaseSavedRupiah int32
+	SessionsValidAfter    pgtype.Timestamptz
 }
 
 type UserImpact struct {

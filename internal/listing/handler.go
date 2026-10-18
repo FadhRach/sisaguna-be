@@ -7,10 +7,12 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/FadhRach/sisaguna-be/internal/platform/httpx"
+	"github.com/FadhRach/sisaguna-be/internal/platform/idempotency"
 )
 
 var errRules = []httpx.ErrorRule{
 	{Err: ErrNotFound, Status: http.StatusNotFound, Code: "listing_not_found"},
+	{Err: idempotency.ErrKeyReused, Status: http.StatusUnprocessableEntity, Code: "idempotency_key_reused"},
 	{Err: ErrMerchantRequired, Status: http.StatusForbidden, Code: "merchant_required"},
 	{Err: ErrMerchantNotApproved, Status: http.StatusForbidden, Code: "merchant_not_approved"},
 	{Err: ErrInvalidPrice, Status: http.StatusUnprocessableEntity, Code: "invalid_price"},

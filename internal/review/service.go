@@ -92,7 +92,11 @@ func (s *Service) Create(ctx context.Context, buyer, orderID uuid.UUID, in Creat
 			Data: map[string]any{"order_id": o.ID}}); err != nil {
 			return err
 		}
-		out = ReviewDTO{ID: row.ID.String(), Stars: in.Stars, Tags: tags, Comment: strings.TrimSpace(in.Comment),
+		author, err := q.GetUserByID(ctx, buyer)
+		if err != nil {
+			return err
+		}
+		out = ReviewDTO{ID: row.ID.String(), Stars: in.Stars, Tags: tags, Comment: strings.TrimSpace(in.Comment), BuyerName: displayName(author.Name),
 			Photos: []PhotoDTO{}, CreatedAt: row.CreatedAt.Time.UTC()}
 		return nil
 	})

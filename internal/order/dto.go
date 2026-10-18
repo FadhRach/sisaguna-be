@@ -25,13 +25,13 @@ type QuoteRequest struct {
 	AddressID *uuid.UUID `json:"address_id"`
 }
 
-// PlaceRequest untuk POST /orders. expected_total adalah total yang tampil di HP: hanya dibandingkan,
-// kalau beda server menjawab price_changed dengan angka baru.
+// PlaceRequest untuk POST /orders. expected_total (wajib) adalah total yang tampil di HP: hanya dibandingkan,
+// kalau beda server menjawab price_changed dengan angka baru. Wajib supaya klien tidak bisa melewati pengaman harga.
 type PlaceRequest struct {
 	QuoteRequest
 	PaymentKind   string `json:"payment_kind" binding:"required,oneof=cash qris gopay ovo dana"`
 	Note          string `json:"note" binding:"max=200"`
-	ExpectedTotal *int   `json:"expected_total" binding:"omitempty,min=0"`
+	ExpectedTotal *int   `json:"expected_total" binding:"required,min=0"`
 }
 
 type CancelRequest struct {

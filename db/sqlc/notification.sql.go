@@ -69,6 +69,16 @@ func (q *Queries) DeleteDeviceToken(ctx context.Context, arg DeleteDeviceTokenPa
 	return err
 }
 
+const deleteDeviceTokenValue = `-- name: DeleteDeviceTokenValue :exec
+DELETE FROM device_tokens WHERE token = $1
+`
+
+// Dipakai saat FCM melaporkan token sudah tidak berlaku (aplikasi dihapus).
+func (q *Queries) DeleteDeviceTokenValue(ctx context.Context, token string) error {
+	_, err := q.db.Exec(ctx, deleteDeviceTokenValue, token)
+	return err
+}
+
 const deleteNotification = `-- name: DeleteNotification :execrows
 UPDATE notifications SET deleted_at = now() WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
 `
@@ -120,6 +130,30 @@ func (q *Queries) GetNotificationPrefs(ctx context.Context, userID uuid.UUID) (G
 		&i.Impact,
 	)
 	return i, err
+}
+
+const listDeviceTokens = `-- name: ListDeviceTokens :many
+SELECT token FROM device_tokens WHERE user_id = $1
+`
+
+func (q *Queries) ListDeviceTokens(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	rows, err := q.db.Query(ctx, listDeviceTokens, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var token string
+		if err := rows.Scan(&token); err != nil {
+			return nil, err
+		}
+		items = append(items, token)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listNotifications = `-- name: ListNotifications :many

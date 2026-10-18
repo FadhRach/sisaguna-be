@@ -66,8 +66,13 @@ Rate limit: login 5/menit/IP, register 3/menit/IP (produksi); semua request tuli
 
 - **Idempotency-Key** wajib di `POST /orders` dan `POST /listings` (UUID baru **per niat pengguna**, bukan per percobaan: pakai ulang key yang sama saat retry
   karena timeout). Request ulang mengembalikan hasil yang sama (200, bukan 201) tanpa efek ganda.
+- **Idempotency-Key yang sama dengan isi request berbeda** ditolak 422 `idempotency_key_reused`: buat key baru kalau pengguna mengubah keranjang.
+- **Batas pesanan**: maks 5 pesanan `ready` sekaligus per pembeli (409 `too_many_active_orders`) dan nilai pesanan maks Rp100.000.000 (422 `order_too_large`).
+- **Sesi dicek ke database.** Akun yang dihapus, password yang diganti/direset, atau admin yang dicabut kehilangan akses dalam ~10 detik (401 `unauthorized`), bukan menunggu token 15 menit habis. Anggap 401 sebagai "login ulang".
+- **Toko ditangguhkan/ditolak** tidak bisa mengubah/menghapus listing (403 `merchant_inactive`). Toko baru berstatus `pending` sampai admin menyetujui; pantau lewat notifikasi dan event `merchant.status_changed`.
+- **Lupa password**: `POST /auth/forgot-password {email}` selalu 202 (tidak membocorkan apakah email terdaftar), kode 6 digit dikirim ke email, berlaku 15 menit, jeda 60 detik antar permintaan. `POST /auth/reset-password {email, code, new_password}` → 200 berisi sesi baru (sama seperti login); semua sesi lama dicabut. Salah 5 kali mematikan kode (400 `invalid_reset_code`, pesan sama untuk email/kode salah atau kedaluwarsa). Maks 5 permintaan/menit per IP.
 - **Chat** memakai `client_id` (UUID dari HP) dengan cara yang sama.
-- **Harga dihitung server.** Kirim `expected_total` di `POST /orders`; kalau beda → 409 `price_changed` berisi angka terbaru, perbarui ringkasan lalu minta konfirmasi lagi.
+- **Harga dihitung server.** `expected_total` **wajib** di `POST /orders` (tanpa itu 400 `validation_failed`); kalau beda → 409 `price_changed` berisi angka terbaru, perbarui ringkasan lalu minta konfirmasi lagi.
 - **Stok** dijaga server. 409 `out_of_stock` / `listing_unavailable` → muat ulang detail. Berlangganan topic `listing:<id>` untuk stok realtime.
 - **Pembayaran non-tunai dan kurir masih TIRUAN** (`PARTNERS_MODE=dummy`, default development): QRIS/GoPay/OVO/DANA selalu sukses (`payment.provider = "dummy"`), ongkir dari rumus tiruan yang sama dengan app Android. Mode `off` (default produksi): hanya tunai + pickup, selain itu 422 `payment_method_unavailable` / `delivery_unavailable`. Cek `quote.payment_kinds` dan `quote.delivery` untuk tahu apa yang ditawarkan.
 - **Pengiriman**: kirim `fulfillment: "delivery"`, `courier`, `speed`, `address_id` di quote dan order. Jarak dari alamat ke toko, maks 15 km; 422 `delivery_unavailable` membawa `reason`. Total sudah termasuk ongkir (`delivery_fee`); komisi toko tidak dikenakan pada ongkir.
@@ -114,7 +119,9 @@ Batas: 5 koneksi per akun (yang tertua ditutup), 20 topic, pesan masuk maks 4 KB
 ## 6. Push notification (FCM)
 
 Daftarkan token dengan `PUT /me/devices {"token": "...", "platform": "android|ios"}` setiap kali token berubah/aplikasi dibuka dan hapus saat logout.
-**Pengiriman push belum aktif** (Fase 2); token sudah tersimpan. Sampai itu, gunakan WebSocket (foreground) dan `GET /me/notifications`.
+**Push aktif bila server diberi kredensial Firebase** (`FCM_CREDENTIALS_FILE`). Server mengirim push ke semua perangkat terdaftar hanya untuk pengguna yang **tidak punya koneksi WebSocket** saat notifikasi dibuat (aplikasi di latar belakang/ditutup) dan hanya bila preferensi notifikasinya mengizinkan.
+Isi push: `notification {title, body}` + `data {notification_id, type}`; gunakan `notification_id` untuk membuka layar yang tepat lalu ambil detail lewat `GET /me/notifications`. Token yang ditolak FCM (aplikasi dihapus) dihapus server otomatis.
+Chat tidak dikirim sebagai push (belum ada). Foreground tetap lewat WebSocket.
 
 ## 7. Contoh respons
 
@@ -1000,7 +1007,7 @@ Diambil dari server sungguhan (data awal = dummy app Android). Daftar dipotong m
       "Porsi pas"
     ],
     "comment": "Enak!",
-    "buyer_name": "",
+    "buyer_name": "Budi S.",
     "photos": [],
     "created_at": "2026-10-17T05:45:09.667397Z"
   }
@@ -1217,6 +1224,8 @@ Diambil dari server sungguhan (data awal = dummy app Android). Daftar dipotong m
 | POST | `/api/v1/auth/register` | Publik | Daftar + langsung login |
 | POST | `/api/v1/auth/login` | Publik | Login |
 | POST | `/api/v1/auth/refresh` | Publik | Tukar refresh token (rotasi) |
+| POST | `/api/v1/auth/forgot-password` | Publik | Kirim kode 6 digit ke email (selalu 202) |
+| POST | `/api/v1/auth/reset-password` | Publik | Atur ulang password dengan kode; mengembalikan sesi baru |
 | POST | `/api/v1/auth/logout` | Login | Cabut refresh token |
 | POST | `/api/v1/auth/password` | Login | Ganti password |
 | GET | `/api/v1/me` | Login | Profil + jumlah notifikasi belum dibaca |
@@ -1292,4 +1301,4 @@ Pemetaan lengkap ke kode Kotlin dan perbedaan perilaku: `ANDROID-SYNC.md`.
 
 ## 9. Yang belum ada
 
-Kemitraan kurir dan payment gateway sungguhan (saat ini tiruan), push FCM, lupa password lewat email, faktor emisi karbon resmi.
+Kemitraan kurir dan payment gateway sungguhan (saat ini tiruan), push untuk pesan chat, faktor emisi karbon resmi.

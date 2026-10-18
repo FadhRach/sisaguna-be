@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/FadhRach/sisaguna-be/internal/platform/auth"
+	"github.com/FadhRach/sisaguna-be/internal/platform/mailer"
 )
 
 var (
@@ -14,7 +15,7 @@ var (
 	ErrInvalidRefreshToken = errors.New("refresh token tidak valid atau kedaluwarsa")
 	ErrUserNotFound        = errors.New("pengguna tidak ditemukan")
 	ErrWrongPassword       = errors.New("password saat ini salah")
-	ErrInvalidMedia        = errors.New("foto tidak valid: harus foto publik milik akun ini")
+	ErrInvalidMedia        = errors.New("foto tidak valid: harus foto (bukan video) publik milik akun ini")
 )
 
 // Service menangani sesi (session.go) dan profil (profile.go).
@@ -23,6 +24,13 @@ type Service struct {
 	tokens     *auth.Tokens
 	passwords  *auth.Passwords
 	refreshTTL time.Duration
+	mailer     mailer.Sender // nil = tidak mengirim email (kode reset tidak terkirim)
+}
+
+// WithMailer mengaktifkan pengiriman email kode lupa password.
+func (s *Service) WithMailer(m mailer.Sender) *Service {
+	s.mailer = m
+	return s
 }
 
 func NewService(repo *Repository, tokens *auth.Tokens, passwords *auth.Passwords, refreshTTL time.Duration) *Service {

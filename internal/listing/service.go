@@ -19,6 +19,7 @@ import (
 	"github.com/FadhRach/sisaguna-be/internal/platform/apperr"
 	"github.com/FadhRach/sisaguna-be/internal/platform/database"
 	"github.com/FadhRach/sisaguna-be/internal/platform/events"
+	"github.com/FadhRach/sisaguna-be/internal/platform/idempotency"
 	pmedia "github.com/FadhRach/sisaguna-be/internal/platform/media"
 	"github.com/FadhRach/sisaguna-be/internal/rules"
 )
@@ -65,8 +66,12 @@ func (s *Service) Create(ctx context.Context, owner uuid.UUID, key string, in Cr
 	if m.Status != sqlc.MerchantStatusApproved {
 		return uuid.Nil, false, ErrMerchantNotApproved
 	}
+	hash := idempotency.Hash(in)
 	if existing, err := s.repo.q.GetListingByIdempotency(ctx, sqlc.GetListingByIdempotencyParams{MerchantID: m.ID, IdempotencyKey: key}); err == nil {
-		return existing, false, nil
+		if err := idempotency.Check(existing.RequestHash, hash); err != nil {
+			return uuid.Nil, false, err
+		}
+		return existing.ID, false, nil
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return uuid.Nil, false, fmt.Errorf("listing service create: %w", err)
 	}
@@ -96,7 +101,10 @@ func (s *Service) Create(ctx context.Context, owner uuid.UUID, key string, in Cr
 	})
 	if database.IsUniqueViolation(err) { // dua request dengan key sama berbarengan
 		if existing, e := s.repo.q.GetListingByIdempotency(ctx, sqlc.GetListingByIdempotencyParams{MerchantID: m.ID, IdempotencyKey: key}); e == nil {
-			return existing, false, nil
+			if e := idempotency.Check(existing.RequestHash, hash); e != nil {
+				return uuid.Nil, false, e
+			}
+			return existing.ID, false, nil
 		}
 	}
 	if err != nil {
@@ -121,7 +129,7 @@ func (s *Service) buildInsert(merchantID uuid.UUID, key string, in CreateRequest
 	p := sqlc.InsertListingParams{
 		MerchantID: merchantID, Title: strings.TrimSpace(in.Title), Description: in.Description, Tier: sqlc.ListingTier(in.Tier),
 		Unit: sqlc.QuantityUnitKg, IsFree: in.IsFree, Stock: int32(in.Stock), Allergens: toAllergens(in.Allergens),
-		Storage: sqlc.StorageMethod(storage), SafetyChecks: []sqlc.SafetyCheck{}, PickupStart: tstz(now), IdempotencyKey: key,
+		Storage: sqlc.StorageMethod(storage), SafetyChecks: []sqlc.SafetyCheck{}, PickupStart: tstz(now), IdempotencyKey: key, RequestHash: pgtype.Text{String: idempotency.Hash(in), Valid: true},
 	}
 	if !in.IsFree {
 		p.Price = pgtype.Int4{Int32: int32(*in.Price), Valid: true}
@@ -173,7 +181,28 @@ func validatePrice(isFree bool, price, original *int) error {
 	return nil
 }
 
+// requireApproved: toko yang ditangguhkan/ditolak tidak boleh lagi mengubah atau menghapus listing.
+func (s *Service) requireApproved(ctx context.Context, owner uuid.UUID) error {
+	m, err := s.repo.q.GetMerchantByOwner(ctx, owner)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrMerchantRequired
+	}
+	if err != nil {
+		return err
+	}
+	if m.Status != sqlc.MerchantStatusApproved {
+		return ErrMerchantNotApproved
+	}
+	return nil
+}
+
 func (s *Service) Update(ctx context.Context, owner, id uuid.UUID, in UpdateRequest) error {
+	if err := s.requireApproved(ctx, owner); err != nil {
+		if errors.Is(err, ErrMerchantRequired) || errors.Is(err, ErrMerchantNotApproved) {
+			return err
+		}
+		return fmt.Errorf("listing service update: %w", err)
+	}
 	cur, err := s.repo.q.GetOwnedListing(ctx, sqlc.GetOwnedListingParams{ID: id, OwnerID: owner})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrNotFound
@@ -239,6 +268,12 @@ func (s *Service) Update(ctx context.Context, owner, id uuid.UUID, in UpdateRequ
 }
 
 func (s *Service) Delete(ctx context.Context, owner, id uuid.UUID) error {
+	if err := s.requireApproved(ctx, owner); err != nil {
+		if errors.Is(err, ErrMerchantRequired) || errors.Is(err, ErrMerchantNotApproved) {
+			return err
+		}
+		return fmt.Errorf("listing service delete: %w", err)
+	}
 	if _, err := s.repo.q.GetOwnedListing(ctx, sqlc.GetOwnedListingParams{ID: id, OwnerID: owner}); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
@@ -533,7 +568,7 @@ func escapeLike(s string) string {
 }
 
 func isDomainErr(err error) bool {
-	for _, e := range []error{ErrInvalidMedia, ErrInvalidPrice, ErrMadeAtRequired, ErrChecklistIncomplete, ErrPastSafeWindow} {
+	for _, e := range []error{ErrInvalidMedia, ErrInvalidPrice, ErrMadeAtRequired, ErrChecklistIncomplete, ErrPastSafeWindow, idempotency.ErrKeyReused} {
 		if errors.Is(err, e) {
 			return true
 		}

@@ -182,6 +182,10 @@
       "value": ""
     },
     {
+      "key": "expected_total_cart",
+      "value": ""
+    },
+    {
       "key": "order_id_ship",
       "value": ""
     },
@@ -502,7 +506,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"merchant_id\": \"{{merchant_id}}\",\n  \"lines\": [\n    {\n      \"listing_id\": \"{{listing_id}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"payment_kind\": \"cash\",\n  \"note\": \"Tanpa sambal\",\n  \"voucher_code\": \"HEMAT5K\",\n  \"expected_total\": {{expected_total}}\n}",
+              "raw": "{\n  \"merchant_id\": \"{{merchant_id}}\",\n  \"lines\": [\n    {\n      \"listing_id\": \"{{listing_id}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"payment_kind\": \"cash\",\n  \"note\": \"Tanpa sambal\",\n  \"expected_total\": {{expected_total}},\n  \"voucher_code\": \"HEMAT5K\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1679,6 +1683,101 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lupa password (202, jawaban sama untuk email tak terdaftar)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/forgot-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "forgot-password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"tidak-terdaftar@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Kode 6 digit dikirim ke email (EMAIL_MODE=log: tercetak di log server). Respons tidak membocorkan apakah email terdaftar."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 202', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reset password dengan kode salah (400 invalid_reset_code)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "reset-password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"tidak-terdaftar@example.com\",\n  \"code\": \"000000\",\n  \"new_password\": \"PasswordBaru123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
                 ]
               }
             }
@@ -3299,6 +3398,131 @@
           ]
         },
         {
+          "name": "Key sama, isi beda (422 idempotency_key_reused)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idem_order}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"merchant_id\": \"{{merchant_id}}\",\n  \"lines\": [\n    {\n      \"listing_id\": \"{{listing_id}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"payment_kind\": \"cash\",\n  \"note\": \"Tanpa sambal\",\n  \"expected_total\": {{expected_total}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyer_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Idempotency-Key yang sama dengan isi request berbeda ditolak, bukan mengembalikan order lama."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tanpa expected_total (400 validation_failed)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idem_bad}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"merchant_id\": \"{{merchant_id}}\",\n  \"lines\": [\n    {\n      \"listing_id\": \"{{listing_id}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"payment_kind\": \"cash\",\n  \"note\": \"Tanpa sambal\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyer_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "expected_total wajib: server membandingkan dengan harga hitungannya."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('idem_bad', 'pm-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Tanpa Idempotency-Key (400)",
           "request": {
             "method": "POST",
@@ -3321,7 +3545,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"merchant_id\": \"{{merchant_id}}\",\n  \"lines\": [\n    {\n      \"listing_id\": \"{{listing_id}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"payment_kind\": \"cash\",\n  \"note\": \"Tanpa sambal\"\n}",
+              "raw": "{\n  \"merchant_id\": \"{{merchant_id}}\",\n  \"lines\": [\n    {\n      \"listing_id\": \"{{listing_id}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"payment_kind\": \"cash\",\n  \"note\": \"Tanpa sambal\",\n  \"expected_total\": {{expected_total}}\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3628,7 +3852,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"merchant_id\": \"{{merchant_id}}\",\n  \"lines\": [\n    {\n      \"listing_id\": \"{{listing_id}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"payment_kind\": \"cash\",\n  \"note\": \"Tanpa sambal\"\n}",
+              "raw": "{\n  \"merchant_id\": \"{{merchant_id}}\",\n  \"lines\": [\n    {\n      \"listing_id\": \"{{listing_id}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"payment_kind\": \"cash\",\n  \"note\": \"Tanpa sambal\",\n  \"expected_total\": {{expected_total}}\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -4098,7 +4322,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"merchant_id\": \"{{merchant_id}}\",\n  \"lines\": [\n    {\n      \"listing_id\": \"{{listing_id}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"payment_kind\": \"cash\",\n  \"note\": \"Tanpa sambal\"\n}",
+              "raw": "{\n  \"merchant_id\": \"{{merchant_id}}\",\n  \"lines\": [\n    {\n      \"listing_id\": \"{{listing_id}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"payment_kind\": \"cash\",\n  \"note\": \"Tanpa sambal\",\n  \"expected_total\": {{expected_total}}\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -9163,6 +9387,61 @@
           ]
         },
         {
+          "name": "Quote keranjang tunai (untuk pesanan OVO)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/checkout/quote",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "checkout",
+                "quote"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"merchant_id\": \"{{merchant_id}}\",\n  \"lines\": [\n    {\n      \"listing_id\": \"{{listing_id}}\",\n      \"quantity\": 2\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyer_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = (pm.response.json() || {}).data;\nif (d) {\n  try { const v = d.total; if (v !== undefined && v !== null) pm.collectionVariables.set('expected_total_cart', v); } catch (e) {}\n}"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "e-wallet OVO belum ditautkan (422)",
           "request": {
             "method": "POST",
@@ -9189,7 +9468,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"merchant_id\": \"{{merchant_id}}\",\n  \"lines\": [\n    {\n      \"listing_id\": \"{{listing_id}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"payment_kind\": \"ovo\"\n}",
+              "raw": "{\n  \"merchant_id\": \"{{merchant_id}}\",\n  \"lines\": [\n    {\n      \"listing_id\": \"{{listing_id}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"payment_kind\": \"ovo\",\n  \"expected_total\": {{expected_total_cart}}\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -9406,7 +9685,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"merchant_id\": \"{{merchant_id}}\",\n  \"lines\": [\n    {\n      \"listing_id\": \"{{listing_id}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"payment_kind\": \"ovo\"\n}",
+              "raw": "{\n  \"merchant_id\": \"{{merchant_id}}\",\n  \"lines\": [\n    {\n      \"listing_id\": \"{{listing_id}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"payment_kind\": \"ovo\",\n  \"expected_total\": {{expected_total_cart}}\n}",
               "options": {
                 "raw": {
                   "language": "json"

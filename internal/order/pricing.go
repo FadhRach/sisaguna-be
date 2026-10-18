@@ -115,6 +115,9 @@ func (s *Service) price(ctx context.Context, q *sqlc.Queries, buyer uuid.UUID, r
 	if p.pickupEnd.Before(p.pickupBy) {
 		p.pickupBy = p.pickupEnd
 	}
+	if p.subtotal > maxOrderTotal || p.original > maxOrderTotal {
+		return nil, ErrOrderTooLarge
+	}
 
 	merchantFunded := false
 	if code := strings.ToUpper(strings.TrimSpace(req.VoucherCode)); code != "" {

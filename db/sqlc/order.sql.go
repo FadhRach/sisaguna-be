@@ -21,6 +21,17 @@ func (q *Queries) AddWrongCodeAttempt(ctx context.Context, orderID uuid.UUID) er
 	return err
 }
 
+const countActiveOrders = `-- name: CountActiveOrders :one
+SELECT count(*)::int FROM orders WHERE buyer_id = $1 AND status IN ('ready', 'pending_payment')
+`
+
+func (q *Queries) CountActiveOrders(ctx context.Context, buyerID uuid.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, countActiveOrders, buyerID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countRecentWrongCodes = `-- name: CountRecentWrongCodes :one
 SELECT count(*) FROM order_code_attempts WHERE order_id = $1 AND attempted_at > now() - interval '10 minutes'
 `
@@ -106,7 +117,7 @@ func (q *Queries) GetDeliveryTarget(ctx context.Context, arg GetDeliveryTargetPa
 }
 
 const getListingsByIDs = `-- name: GetListingsByIDs :many
-SELECT id, merchant_id, title, description, tier, unit, is_free, price_original, price, stock, sold_count, halal, allergens, made_at, storage, safety_checks, safe_until, pickup_start, pickup_end, location, video_media_id, status, idempotency_key, created_at, updated_at FROM listings WHERE id = ANY($1::uuid[])
+SELECT id, merchant_id, title, description, tier, unit, is_free, price_original, price, stock, sold_count, halal, allergens, made_at, storage, safety_checks, safe_until, pickup_start, pickup_end, location, video_media_id, status, idempotency_key, created_at, updated_at, request_hash FROM listings WHERE id = ANY($1::uuid[])
 `
 
 func (q *Queries) GetListingsByIDs(ctx context.Context, ids []uuid.UUID) ([]Listing, error) {
@@ -144,6 +155,7 @@ func (q *Queries) GetListingsByIDs(ctx context.Context, ids []uuid.UUID) ([]List
 			&i.IdempotencyKey,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.RequestHash,
 		); err != nil {
 			return nil, err
 		}
@@ -190,7 +202,7 @@ func (q *Queries) GetMerchantBrief(ctx context.Context, id uuid.UUID) (GetMercha
 }
 
 const getOrderByIdempotency = `-- name: GetOrderByIdempotency :one
-SELECT id FROM orders WHERE buyer_id = $1 AND idempotency_key = $2
+SELECT id, coalesce(request_hash, '')::text AS request_hash FROM orders WHERE buyer_id = $1 AND idempotency_key = $2
 `
 
 type GetOrderByIdempotencyParams struct {
@@ -198,15 +210,20 @@ type GetOrderByIdempotencyParams struct {
 	IdempotencyKey string
 }
 
-func (q *Queries) GetOrderByIdempotency(ctx context.Context, arg GetOrderByIdempotencyParams) (uuid.UUID, error) {
+type GetOrderByIdempotencyRow struct {
+	ID          uuid.UUID
+	RequestHash string
+}
+
+func (q *Queries) GetOrderByIdempotency(ctx context.Context, arg GetOrderByIdempotencyParams) (GetOrderByIdempotencyRow, error) {
 	row := q.db.QueryRow(ctx, getOrderByIdempotency, arg.BuyerID, arg.IdempotencyKey)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
+	var i GetOrderByIdempotencyRow
+	err := row.Scan(&i.ID, &i.RequestHash)
+	return i, err
 }
 
 const getOrderView = `-- name: GetOrderView :one
-SELECT o.id, o.code, o.code_date, o.buyer_id, o.merchant_id, o.status, o.fulfillment, o.payment_kind, o.payment_status, o.note, o.subtotal, o.original_total, o.voucher_code, o.voucher_discount, o.service_fee, o.delivery_fee, o.total, o.commission, o.merchant_payout, o.delivery_courier, o.delivery_speed, o.delivery_eta_min, o.delivery_eta_max, o.delivery_address, o.pickup_by, o.pickup_end, o.idempotency_key, o.created_at, o.paid_at, o.completed_at, o.cancelled_at, o.cancelled_by, o.cancel_reason, o.reminded_at, o.voucher_funded_by, o.delivery_discount, m.name AS merchant_name, m.owner_id AS merchant_owner_id, u.name AS buyer_name,
+SELECT o.id, o.code, o.code_date, o.buyer_id, o.merchant_id, o.status, o.fulfillment, o.payment_kind, o.payment_status, o.note, o.subtotal, o.original_total, o.voucher_code, o.voucher_discount, o.service_fee, o.delivery_fee, o.total, o.commission, o.merchant_payout, o.delivery_courier, o.delivery_speed, o.delivery_eta_min, o.delivery_eta_max, o.delivery_address, o.pickup_by, o.pickup_end, o.idempotency_key, o.created_at, o.paid_at, o.completed_at, o.cancelled_at, o.cancelled_by, o.cancel_reason, o.reminded_at, o.voucher_funded_by, o.delivery_discount, o.request_hash, m.name AS merchant_name, m.owner_id AS merchant_owner_id, u.name AS buyer_name,
        m.location_label AS merchant_location, ST_Y(m.location::geometry)::float8 AS merchant_lat, ST_X(m.location::geometry)::float8 AS merchant_lng,
        EXISTS (SELECT 1 FROM reviews r WHERE r.order_id = o.id)::bool AS has_review,
        coalesce((SELECT c.status::text FROM complaints c WHERE c.order_id = o.id), '')::text AS complaint_status
@@ -266,6 +283,7 @@ func (q *Queries) GetOrderView(ctx context.Context, id uuid.UUID) (GetOrderViewR
 		&i.Order.RemindedAt,
 		&i.Order.VoucherFundedBy,
 		&i.Order.DeliveryDiscount,
+		&i.Order.RequestHash,
 		&i.MerchantName,
 		&i.MerchantOwnerID,
 		&i.BuyerName,
@@ -307,13 +325,13 @@ const insertOrder = `-- name: InsertOrder :one
 INSERT INTO orders (code, buyer_id, merchant_id, status, fulfillment, payment_kind, payment_status, paid_at, note, subtotal, original_total,
                     voucher_code, voucher_discount, service_fee, delivery_fee, delivery_discount, total, commission, merchant_payout,
                     delivery_courier, delivery_speed, delivery_eta_min, delivery_eta_max, delivery_address,
-                    pickup_by, pickup_end, idempotency_key, voucher_funded_by)
+                    pickup_by, pickup_end, idempotency_key, voucher_funded_by, request_hash)
 VALUES ($1, $2, $3, 'ready', $4::fulfillment, $5::payment_kind, $6::payment_status,
         CASE WHEN $6::payment_status = 'paid' THEN now() END, $7, $8, $9,
         $10, $11, $12, $13, $14, $15, $16, $17,
         $18::courier, $19::delivery_speed, $20::smallint, $21::smallint,
         $22::jsonb,
-        $23::timestamptz, $24, $25, $26)
+        $23::timestamptz, $24, $25, $26, $27)
 RETURNING id
 `
 
@@ -344,6 +362,7 @@ type InsertOrderParams struct {
 	PickupEnd        pgtype.Timestamptz
 	IdempotencyKey   string
 	VoucherFundedBy  pgtype.Text
+	RequestHash      pgtype.Text
 }
 
 func (q *Queries) InsertOrder(ctx context.Context, arg InsertOrderParams) (uuid.UUID, error) {
@@ -374,6 +393,7 @@ func (q *Queries) InsertOrder(ctx context.Context, arg InsertOrderParams) (uuid.
 		arg.PickupEnd,
 		arg.IdempotencyKey,
 		arg.VoucherFundedBy,
+		arg.RequestHash,
 	)
 	var id uuid.UUID
 	err := row.Scan(&id)
@@ -413,7 +433,7 @@ func (q *Queries) InsertOrderItem(ctx context.Context, arg InsertOrderItemParams
 }
 
 const listBuyerOrders = `-- name: ListBuyerOrders :many
-SELECT o.id, o.code, o.code_date, o.buyer_id, o.merchant_id, o.status, o.fulfillment, o.payment_kind, o.payment_status, o.note, o.subtotal, o.original_total, o.voucher_code, o.voucher_discount, o.service_fee, o.delivery_fee, o.total, o.commission, o.merchant_payout, o.delivery_courier, o.delivery_speed, o.delivery_eta_min, o.delivery_eta_max, o.delivery_address, o.pickup_by, o.pickup_end, o.idempotency_key, o.created_at, o.paid_at, o.completed_at, o.cancelled_at, o.cancelled_by, o.cancel_reason, o.reminded_at, o.voucher_funded_by, o.delivery_discount, m.name AS merchant_name, m.owner_id AS merchant_owner_id, u.name AS buyer_name,
+SELECT o.id, o.code, o.code_date, o.buyer_id, o.merchant_id, o.status, o.fulfillment, o.payment_kind, o.payment_status, o.note, o.subtotal, o.original_total, o.voucher_code, o.voucher_discount, o.service_fee, o.delivery_fee, o.total, o.commission, o.merchant_payout, o.delivery_courier, o.delivery_speed, o.delivery_eta_min, o.delivery_eta_max, o.delivery_address, o.pickup_by, o.pickup_end, o.idempotency_key, o.created_at, o.paid_at, o.completed_at, o.cancelled_at, o.cancelled_by, o.cancel_reason, o.reminded_at, o.voucher_funded_by, o.delivery_discount, o.request_hash, m.name AS merchant_name, m.owner_id AS merchant_owner_id, u.name AS buyer_name,
        m.location_label AS merchant_location, ST_Y(m.location::geometry)::float8 AS merchant_lat, ST_X(m.location::geometry)::float8 AS merchant_lng,
        EXISTS (SELECT 1 FROM reviews r WHERE r.order_id = o.id)::bool AS has_review,
        coalesce((SELECT c.status::text FROM complaints c WHERE c.order_id = o.id), '')::text AS complaint_status
@@ -496,6 +516,7 @@ func (q *Queries) ListBuyerOrders(ctx context.Context, arg ListBuyerOrdersParams
 			&i.Order.RemindedAt,
 			&i.Order.VoucherFundedBy,
 			&i.Order.DeliveryDiscount,
+			&i.Order.RequestHash,
 			&i.MerchantName,
 			&i.MerchantOwnerID,
 			&i.BuyerName,
@@ -516,7 +537,7 @@ func (q *Queries) ListBuyerOrders(ctx context.Context, arg ListBuyerOrdersParams
 }
 
 const listMerchantOrders = `-- name: ListMerchantOrders :many
-SELECT o.id, o.code, o.code_date, o.buyer_id, o.merchant_id, o.status, o.fulfillment, o.payment_kind, o.payment_status, o.note, o.subtotal, o.original_total, o.voucher_code, o.voucher_discount, o.service_fee, o.delivery_fee, o.total, o.commission, o.merchant_payout, o.delivery_courier, o.delivery_speed, o.delivery_eta_min, o.delivery_eta_max, o.delivery_address, o.pickup_by, o.pickup_end, o.idempotency_key, o.created_at, o.paid_at, o.completed_at, o.cancelled_at, o.cancelled_by, o.cancel_reason, o.reminded_at, o.voucher_funded_by, o.delivery_discount, m.name AS merchant_name, m.owner_id AS merchant_owner_id, u.name AS buyer_name,
+SELECT o.id, o.code, o.code_date, o.buyer_id, o.merchant_id, o.status, o.fulfillment, o.payment_kind, o.payment_status, o.note, o.subtotal, o.original_total, o.voucher_code, o.voucher_discount, o.service_fee, o.delivery_fee, o.total, o.commission, o.merchant_payout, o.delivery_courier, o.delivery_speed, o.delivery_eta_min, o.delivery_eta_max, o.delivery_address, o.pickup_by, o.pickup_end, o.idempotency_key, o.created_at, o.paid_at, o.completed_at, o.cancelled_at, o.cancelled_by, o.cancel_reason, o.reminded_at, o.voucher_funded_by, o.delivery_discount, o.request_hash, m.name AS merchant_name, m.owner_id AS merchant_owner_id, u.name AS buyer_name,
        m.location_label AS merchant_location, ST_Y(m.location::geometry)::float8 AS merchant_lat, ST_X(m.location::geometry)::float8 AS merchant_lng,
        EXISTS (SELECT 1 FROM reviews r WHERE r.order_id = o.id)::bool AS has_review,
        coalesce((SELECT c.status::text FROM complaints c WHERE c.order_id = o.id), '')::text AS complaint_status
@@ -599,6 +620,7 @@ func (q *Queries) ListMerchantOrders(ctx context.Context, arg ListMerchantOrders
 			&i.Order.RemindedAt,
 			&i.Order.VoucherFundedBy,
 			&i.Order.DeliveryDiscount,
+			&i.Order.RequestHash,
 			&i.MerchantName,
 			&i.MerchantOwnerID,
 			&i.BuyerName,
@@ -840,8 +862,18 @@ func (q *Queries) ListReminderCandidates(ctx context.Context) ([]uuid.UUID, erro
 	return items, nil
 }
 
+const lockBuyerOrders = `-- name: LockBuyerOrders :exec
+SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))
+`
+
+// Serialisasi checkout satu pembeli supaya batas pesanan aktif tidak bisa dilewati dengan request paralel.
+func (q *Queries) LockBuyerOrders(ctx context.Context, buyer string) error {
+	_, err := q.db.Exec(ctx, lockBuyerOrders, buyer)
+	return err
+}
+
 const lockListingsForCheckout = `-- name: LockListingsForCheckout :many
-SELECT id, merchant_id, title, description, tier, unit, is_free, price_original, price, stock, sold_count, halal, allergens, made_at, storage, safety_checks, safe_until, pickup_start, pickup_end, location, video_media_id, status, idempotency_key, created_at, updated_at FROM listings WHERE id = ANY($1::uuid[]) ORDER BY id FOR UPDATE
+SELECT id, merchant_id, title, description, tier, unit, is_free, price_original, price, stock, sold_count, halal, allergens, made_at, storage, safety_checks, safe_until, pickup_start, pickup_end, location, video_media_id, status, idempotency_key, created_at, updated_at, request_hash FROM listings WHERE id = ANY($1::uuid[]) ORDER BY id FOR UPDATE
 `
 
 func (q *Queries) LockListingsForCheckout(ctx context.Context, ids []uuid.UUID) ([]Listing, error) {
@@ -879,6 +911,7 @@ func (q *Queries) LockListingsForCheckout(ctx context.Context, ids []uuid.UUID) 
 			&i.IdempotencyKey,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.RequestHash,
 		); err != nil {
 			return nil, err
 		}
@@ -891,7 +924,7 @@ func (q *Queries) LockListingsForCheckout(ctx context.Context, ids []uuid.UUID) 
 }
 
 const lockOrder = `-- name: LockOrder :one
-SELECT id, code, code_date, buyer_id, merchant_id, status, fulfillment, payment_kind, payment_status, note, subtotal, original_total, voucher_code, voucher_discount, service_fee, delivery_fee, total, commission, merchant_payout, delivery_courier, delivery_speed, delivery_eta_min, delivery_eta_max, delivery_address, pickup_by, pickup_end, idempotency_key, created_at, paid_at, completed_at, cancelled_at, cancelled_by, cancel_reason, reminded_at, voucher_funded_by, delivery_discount FROM orders WHERE id = $1 FOR UPDATE
+SELECT id, code, code_date, buyer_id, merchant_id, status, fulfillment, payment_kind, payment_status, note, subtotal, original_total, voucher_code, voucher_discount, service_fee, delivery_fee, total, commission, merchant_payout, delivery_courier, delivery_speed, delivery_eta_min, delivery_eta_max, delivery_address, pickup_by, pickup_end, idempotency_key, created_at, paid_at, completed_at, cancelled_at, cancelled_by, cancel_reason, reminded_at, voucher_funded_by, delivery_discount, request_hash FROM orders WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) LockOrder(ctx context.Context, id uuid.UUID) (Order, error) {
@@ -934,6 +967,7 @@ func (q *Queries) LockOrder(ctx context.Context, id uuid.UUID) (Order, error) {
 		&i.RemindedAt,
 		&i.VoucherFundedBy,
 		&i.DeliveryDiscount,
+		&i.RequestHash,
 	)
 	return i, err
 }

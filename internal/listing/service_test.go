@@ -208,8 +208,13 @@ func TestUpdateAndDelete(t *testing.T) {
 	if d, _ := e.svc.Get(e.ctx, l, PointQuery{}); d.Status != "paused" {
 		t.Errorf("status = %s", d.Status)
 	}
-	if err := e.svc.Update(e.ctx, e.fx.User("X"), l, UpdateRequest{Stock: ip(1)}); !errors.Is(err, ErrNotFound) {
+	other := e.fx.User("Lain")
+	e.fx.Merchant(other, "approved", -6.3, 106.8)
+	if err := e.svc.Update(e.ctx, other, l, UpdateRequest{Stock: ip(1)}); !errors.Is(err, ErrNotFound) {
 		t.Errorf("stranger update: %v", err)
+	}
+	if err := e.svc.Update(e.ctx, e.fx.User("X"), l, UpdateRequest{Stock: ip(1)}); !errors.Is(err, ErrMerchantRequired) {
+		t.Errorf("no store update: %v", err)
 	}
 	if err := e.svc.Update(e.ctx, owner, l, UpdateRequest{PickupHours: ip(1)}); err != nil {
 		t.Errorf("extend: %v", err)
@@ -220,8 +225,20 @@ func TestUpdateAndDelete(t *testing.T) {
 		t.Errorf("price on free listing: %v", err)
 	}
 
-	if err := e.svc.Delete(e.ctx, e.fx.User("X"), l); !errors.Is(err, ErrNotFound) {
+	if err := e.svc.Delete(e.ctx, other, l); !errors.Is(err, ErrNotFound) {
 		t.Errorf("stranger delete: %v", err)
+	}
+	if _, err := e.pool.Exec(e.ctx, `UPDATE merchants SET status = 'suspended' WHERE id = $1`, m); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.svc.Update(e.ctx, owner, l, UpdateRequest{Stock: ip(1)}); !errors.Is(err, ErrMerchantNotApproved) {
+		t.Errorf("suspended update: %v", err)
+	}
+	if err := e.svc.Delete(e.ctx, owner, l); !errors.Is(err, ErrMerchantNotApproved) {
+		t.Errorf("suspended delete: %v", err)
+	}
+	if _, err := e.pool.Exec(e.ctx, `UPDATE merchants SET status = 'approved' WHERE id = $1`, m); err != nil {
+		t.Fatal(err)
 	}
 	if err := e.svc.Delete(e.ctx, owner, l); err != nil {
 		t.Fatal(err)

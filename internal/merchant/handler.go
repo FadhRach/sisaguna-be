@@ -13,6 +13,7 @@ import (
 var errRules = []httpx.ErrorRule{
 	{Err: ErrExists, Status: http.StatusConflict, Code: "merchant_exists"},
 	{Err: ErrNotFound, Status: http.StatusNotFound, Code: "merchant_not_found"},
+	{Err: ErrInactive, Status: http.StatusForbidden, Code: "merchant_inactive"},
 	{Err: ErrPartialPoint, Status: http.StatusBadRequest, Code: "validation_failed"},
 	{Err: media.ErrInvalidMedia, Status: http.StatusBadRequest, Code: "invalid_media"},
 }

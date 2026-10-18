@@ -45,6 +45,35 @@ paths:
       responses:
         "200": { $ref: "#/components/responses/Session" }
         "401": { description: "error.code = invalid_refresh_token", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /api/v1/auth/forgot-password:
+    post:
+      summary: Minta kode atur ulang password lewat email
+      description: Selalu 202 supaya daftar akun tidak bisa ditebak. Kode 6 digit berlaku 15 menit, maks satu kode per 60 detik per akun.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [email], properties: { email: { type: string, format: email } } } } }
+      responses:
+        "202": { description: Diterima }
+        "429": { $ref: "#/components/responses/Error" }
+  /api/v1/auth/reset-password:
+    post:
+      summary: Atur ulang password dengan kode dari email
+      description: Berhasil mencabut semua sesi lama dan mengembalikan sesi baru. Salah 5 kali mematikan kode.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, code, new_password]
+              properties:
+                email: { type: string, format: email }
+                code: { type: string, minLength: 6, maxLength: 6, pattern: "^[0-9]{6}$" }
+                new_password: { type: string, minLength: 8, maxLength: 72 }
+      responses:
+        "200": { $ref: "#/components/responses/Session" }
+        "400": { description: "error.code = invalid_reset_code atau validation_failed", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Error" }
   /api/v1/auth/logout:
     post:
       summary: Cabut refresh token
@@ -190,7 +219,7 @@ paths:
         "200": { $ref: "#/components/responses/Data" }
     post:
       summary: Buat listing (mitra, toko approved)
-      description: "Header `Idempotency-Key` wajib; request ulang mengembalikan listing yang sama dengan 200. Tier human - made_at, 4 checklist (untouched, sensory_ok, stored_right, packed_clean) wajib. safe_until = made_at + jam aman (room_temp 4, shelf 72, chilled 48, frozen 168). pickup_end = yang lebih awal antara +pickup_hours (1/2/4/8) dan safe_until. Lewat batas aman: 422 past_safe_window + suggested_tier=animal_feed."
+      description: "Header `Idempotency-Key` wajib; request ulang mengembalikan listing yang sama dengan 200. Tier human - made_at, 4 checklist (untouched, sensory_ok, stored_right, packed_clean) wajib. safe_until = made_at + jam aman (room_temp 4, shelf 72, chilled 48, frozen 168). pickup_end = yang lebih awal antara +pickup_hours (1/2/4/8) dan safe_until. Lewat batas aman: 422 past_safe_window + suggested_tier=animal_feed. Key sama dengan isi berbeda: 422 idempotency_key_reused."
       security: [{ bearer: [] }]
       parameters:
         - { name: Idempotency-Key, in: header, required: true, schema: { type: string, maxLength: 64 } }
@@ -314,7 +343,7 @@ paths:
   /api/v1/orders:
     post:
       summary: Buat pesanan (satu transaksi)
-      description: "Header `Idempotency-Key` wajib. `expected_total` (opsional) dibandingkan dengan hasil server; beda - 409 price_changed berisi subtotal, voucher_discount, service_fee, total terbaru. payment_kind selain cash - 422 payment_method_unavailable."
+      description: "Header `Idempotency-Key` wajib. `expected_total` (wajib) dibandingkan dengan hasil server; beda - 409 price_changed berisi subtotal, voucher_discount, service_fee, total terbaru. payment_kind selain cash - 422 payment_method_unavailable."
       security: [{ bearer: [] }]
       parameters:
         - { name: Idempotency-Key, in: header, required: true, schema: { type: string, maxLength: 64 } }
@@ -324,8 +353,8 @@ paths:
       responses:
         "201": { $ref: "#/components/responses/Data" }
         "200": { description: Idempotency-Key sudah pernah dipakai; order lama dikembalikan }
-        "409": { description: "price_changed | out_of_stock | listing_unavailable" }
-        "422": { description: "voucher_* | payment_method_unavailable | delivery_unavailable" }
+        "409": { description: "price_changed | out_of_stock | listing_unavailable | too_many_active_orders (maks 5 pesanan ready)" }
+        "422": { description: "voucher_* | payment_method_unavailable | delivery_unavailable | idempotency_key_reused (key sama, isi beda) | order_too_large (> Rp100.000.000)" }
   /api/v1/orders/{id}:
     get:
       summary: Detail pesanan (pembeli melihat kode; mitra melihat komisi/payout)
@@ -769,7 +798,7 @@ components:
       allOf:
         - $ref: "#/components/schemas/Cart"
         - type: object
-          required: [payment_kind]
+          required: [payment_kind, expected_total]
           properties:
             payment_kind: { type: string, enum: [cash, qris, gopay, ovo, dana], description: "non-tunai TIRUAN (langsung paid) bila PARTNERS_MODE=dummy; e-wallet harus ditautkan dulu" }
             note: { type: string, maxLength: 200 }

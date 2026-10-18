@@ -137,3 +137,41 @@ func TestMerchantMediaBreakdownAndList(t *testing.T) {
 		t.Errorf("anonim: semua=%d tersedia=%d", len(all), len(onlyAvail))
 	}
 }
+
+func TestNewMerchantNotifiesAdminsOrAutoApproves(t *testing.T) {
+	pool := testutil.NewPool(t)
+	fx := testutil.Fixtures{T: t, Pool: pool}
+	ctx := context.Background()
+	listings := listing.NewService(listing.NewRepository(pool), pmedia.URLs{Base: "http://api.test"})
+	s := NewService(NewRepository(pool), listings, pmedia.URLs{Base: "http://api.test"})
+	admin := fx.User("Admin")
+	if _, err := pool.Exec(ctx, `UPDATE users SET is_admin = true WHERE id = $1`, admin); err != nil {
+		t.Fatal(err)
+	}
+	count := func() (n int) {
+		if err := pool.QueryRow(ctx, `SELECT count(*) FROM notifications WHERE user_id = $1 AND type = 'merchant'`, admin).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+
+	m, err := s.Create(ctx, fx.User("Mitra A"), CreateRequest{Name: "Warung A", Address: "Jl. A", Lat: fp(-6.24), Lng: fp(106.80)})
+	if err != nil || m.Status != "pending" {
+		t.Fatalf("create: %v %+v", err, m)
+	}
+	if count() != 1 {
+		t.Errorf("admin harus dapat 1 notifikasi, dapat %d", count())
+	}
+
+	s.WithAutoApprove(func(ctx context.Context, id uuid.UUID) error {
+		_, err := pool.Exec(ctx, `UPDATE merchants SET status = 'approved' WHERE id = $1`, id)
+		return err
+	})
+	m, err = s.Create(ctx, fx.User("Mitra B"), CreateRequest{Name: "Warung B", Address: "Jl. B", Lat: fp(-6.25), Lng: fp(106.81)})
+	if err != nil || m.Status != "approved" {
+		t.Fatalf("auto approve: %v %+v", err, m)
+	}
+	if count() != 1 {
+		t.Errorf("toko auto-approve tidak perlu memanggil admin, notifikasi = %d", count())
+	}
+}

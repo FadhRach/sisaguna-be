@@ -53,3 +53,10 @@ ON CONFLICT (token) DO UPDATE SET user_id = EXCLUDED.user_id, platform = EXCLUDE
 
 -- name: DeleteDeviceToken :exec
 DELETE FROM device_tokens WHERE token = $1 AND user_id = $2;
+
+-- name: ListDeviceTokens :many
+SELECT token FROM device_tokens WHERE user_id = $1;
+
+-- name: DeleteDeviceTokenValue :exec
+-- Dipakai saat FCM melaporkan token sudah tidak berlaku (aplikasi dihapus).
+DELETE FROM device_tokens WHERE token = $1;

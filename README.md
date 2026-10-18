@@ -79,7 +79,7 @@ Backup harian dan salinan foto ke R2 dijelaskan di `deploy/README.md`. Developer
 | Yang diuji | Cara | Hasil |
 | --- | --- | --- |
 | Logika bisnis, database, API | `go test ./...` dengan Postgres+PostGIS asli (testcontainers), termasuk balapan 10 pembeli rebutan stok, kunci kode pickup, WebSocket, upload foto/video, sinkron ke server S3 tiruan, paritas aturan Kotlin, paritas seed dengan dummy Android | lulus |
-| Seluruh endpoint lewat HTTP | Postman collection (186 request) dijalankan dengan Newman ke server dan database lokal, termasuk upload file asli dan alur cepat | lulus, 0 gagal |
+| Seluruh endpoint lewat HTTP | Postman collection (191 request) dijalankan dengan Newman ke server dan database lokal. Request upload butuh file asli, jadi lewat Newman penuh 14 request upload dan turunannya gagal (bukan bug); upload diuji lewat `go test` dan curl, dan folder "Alur Cepat MVP" lulus penuh | 177 lulus, 14 gagal karena tanpa file upload |
 | Stack produksi (`deploy/docker-compose.prod.yml`) | dibangun dan dijalankan penuh di Mac: Caddy HTTPS, API, Postgres tanpa port publik, migrasi otomatis, folder media, foto publik lewat Caddy, folder privat tidak terjangkau, WebSocket lewat TLS, backup, uji pulih, restore, `deploy/demo.sh reset/refresh` | lulus |
 
 **Belum diuji, risikonya ada di sini:**
@@ -96,7 +96,10 @@ Backup harian dan salinan foto ke R2 dijelaskan di `deploy/README.md`. Developer
 | 8 | Backup tanpa R2 tersimpan di disk yang sama dengan database | Disk rusak = data dan backup hilang | Isi R2 sebelum dipakai pengguna sungguhan; jalankan `backup restore-test` tiap bulan |
 | 9 | Foto dummy dari Wikimedia, atribusi tidak lengkap | Masalah lisensi bila dipakai publik | Ganti dengan foto milik sendiri sebelum rilis; hanya untuk demo |
 | 10 | Belum diuji beban (banyak pengguna bersamaan) dan belum ada monitoring selain `/healthz` | Masalah performa baru terlihat setelah dipakai | Daftarkan `/healthz` di UptimeRobot, pantau `docker compose logs -f api` |
-| 11 | Push notification (FCM), kurir dan payment gateway sungguhan, lupa password lewat email belum ada | Fitur itu belum berfungsi | Fase berikutnya |
+| 11 | Kurir dan payment gateway sungguhan belum ada (tiruan) | Pembayaran non-tunai tidak memindahkan uang | Fase berikutnya |
+| 12 | Push FCM dan email SMTP lulus tes dengan server tiruan, belum pernah dicoba dengan kredensial Firebase dan SMTP sungguhan | Push/email tidak sampai di HP | Isi `FCM_CREDENTIALS_FILE` dan `SMTP_*` di VPS, minta dev Android mendaftarkan token lewat `PUT /me/devices`, matikan app lalu picu notifikasi |
+| 13 | Cek sesi (user dihapus, password diganti, admin dicabut) di-cache 10 detik | Akses masih bisa jalan sampai 10 detik setelah dicabut | Cukup; turunkan `sessionCacheTTL` di `internal/app/app.go` bila perlu |
+| 14 | File biner `seed` 18 MB pernah ter-commit dan masih ada di riwayat git | Clone penuh tetap mengunduhnya | Bersihkan riwayat (`git filter-repo`) hanya jika ukuran clone mengganggu; itu menulis ulang riwayat |
 
 Urutan aman menuju VPS: (1) VPS uji dengan `PARTNERS_MODE=dummy` dan `deploy/demo.sh reset`, (2) integrasi dan uji dengan app Android,
 (3) baru VPS/konfigurasi produksi: `PARTNERS_MODE` kosong, tanpa seed dev, `R2_*` terisi, `backup restore-test` hijau.

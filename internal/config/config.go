@@ -12,28 +12,35 @@ import (
 )
 
 type Config struct {
-	AppEnv         string // development | production
-	DatabaseURL    string
-	JWTSecret      string
-	AccessTTL      time.Duration
-	RefreshTTL     time.Duration
-	Port           string
-	PublicBaseURL  string
-	MediaRoot      string
-	Timezone       string
-	TrustedProxies []string
-	LoginRate      int // percobaan login per menit per IP
-	RegisterRate   int // pendaftaran per menit per IP
-	AdminEmail     string
-	AdminPassword  string
-	AdminName      string
-	R2AccountID    string
-	R2AccessKeyID  string
-	R2Secret       string
-	R2Bucket       string
-	AllowDemoSeed  bool   // ALLOW_DEMO_SEED=true: izinkan seed dev (data dummy + akun berpassword umum) di APP_ENV=production, hanya untuk VPS uji
-	PartnersDummy  bool   // kurir + pembayaran non-tunai tiruan (PARTNERS_MODE=dummy); default dummy di development, off di produksi
-	R2Endpoint     string // opsional; default https://<account>.r2.cloudflarestorage.com (diisi hanya untuk tes dengan MinIO)
+	AppEnv               string // development | production
+	DatabaseURL          string
+	JWTSecret            string
+	AccessTTL            time.Duration
+	RefreshTTL           time.Duration
+	Port                 string
+	PublicBaseURL        string
+	MediaRoot            string
+	Timezone             string
+	TrustedProxies       []string
+	LoginRate            int // percobaan login per menit per IP
+	RegisterRate         int // pendaftaran per menit per IP
+	AdminEmail           string
+	AdminPassword        string
+	AdminName            string
+	R2AccountID          string
+	R2AccessKeyID        string
+	R2Secret             string
+	R2Bucket             string
+	FCMCredentialsFile   string // service account JSON; kosong = push mati
+	FCMProjectID         string
+	EmailMode            string // smtp | log | off
+	SMTPHost, SMTPPort   string
+	SMTPUser, SMTPPass   string
+	SMTPFrom             string
+	AutoApproveMerchants bool   // MERCHANT_AUTO_APPROVE=true: toko baru langsung approved tanpa admin (hanya untuk uji)
+	AllowDemoSeed        bool   // ALLOW_DEMO_SEED=true: izinkan seed dev (data dummy + akun berpassword umum) di APP_ENV=production, hanya untuk VPS uji
+	PartnersDummy        bool   // kurir + pembayaran non-tunai tiruan (PARTNERS_MODE=dummy); default dummy di development, off di produksi
+	R2Endpoint           string // opsional; default https://<account>.r2.cloudflarestorage.com (diisi hanya untuk tes dengan MinIO)
 }
 
 // Load membaca .env (kalau ada) lalu environment asli. Di Docker env sudah
@@ -66,7 +73,20 @@ func Load() (*Config, error) {
 	// dengan banyak peran tidak terkunci; bisa diatur lewat LOGIN_RATE_PER_MIN / REGISTER_RATE_PER_MIN.
 	strict := os.Getenv("APP_ENV") == "production"
 	cfg.PartnersDummy = envOr("PARTNERS_MODE", map[bool]string{true: "off", false: "dummy"}[strict]) == "dummy"
+	cfg.SMTPHost, cfg.SMTPPort = os.Getenv("SMTP_HOST"), envOr("SMTP_PORT", "587")
+	cfg.SMTPUser, cfg.SMTPPass, cfg.SMTPFrom = os.Getenv("SMTP_USER"), os.Getenv("SMTP_PASSWORD"), envOr("SMTP_FROM", "SisaGuna <no-reply@sisaguna.id>")
+	// default: development mencetak email ke log; produksi mengirim lewat SMTP bila SMTP_HOST diisi, kalau tidak mati.
+	defMode := "log"
+	if strict {
+		defMode = "off"
+		if cfg.SMTPHost != "" {
+			defMode = "smtp"
+		}
+	}
+	cfg.EmailMode = envOr("EMAIL_MODE", defMode)
+	cfg.FCMCredentialsFile, cfg.FCMProjectID = os.Getenv("FCM_CREDENTIALS_FILE"), os.Getenv("FCM_PROJECT_ID")
 	cfg.AllowDemoSeed = os.Getenv("ALLOW_DEMO_SEED") == "true"
+	cfg.AutoApproveMerchants = os.Getenv("MERCHANT_AUTO_APPROVE") == "true"
 	cfg.LoginRate = envInt("LOGIN_RATE_PER_MIN", map[bool]int{true: 5, false: 60}[strict])
 	cfg.RegisterRate = envInt("REGISTER_RATE_PER_MIN", map[bool]int{true: 3, false: 30}[strict])
 
@@ -75,6 +95,12 @@ func Load() (*Config, error) {
 	}
 	if len(cfg.JWTSecret) < 32 {
 		return nil, fmt.Errorf("config load: JWT_SECRET minimal 32 byte")
+	}
+	if cfg.EmailMode != "smtp" && cfg.EmailMode != "log" && cfg.EmailMode != "off" {
+		return nil, fmt.Errorf("config load: EMAIL_MODE harus smtp, log, atau off")
+	}
+	if cfg.EmailMode == "smtp" && cfg.SMTPHost == "" {
+		return nil, fmt.Errorf("config load: EMAIL_MODE=smtp butuh SMTP_HOST")
 	}
 	if cfg.AppEnv != "development" && cfg.AppEnv != "production" {
 		return nil, fmt.Errorf("config load: APP_ENV harus development atau production")

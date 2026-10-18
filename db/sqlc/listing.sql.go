@@ -40,7 +40,7 @@ func (q *Queries) CountActiveListings(ctx context.Context, merchantID uuid.UUID)
 }
 
 const getListingByIdempotency = `-- name: GetListingByIdempotency :one
-SELECT id FROM listings WHERE merchant_id = $1 AND idempotency_key = $2
+SELECT id, coalesce(request_hash, '')::text AS request_hash FROM listings WHERE merchant_id = $1 AND idempotency_key = $2
 `
 
 type GetListingByIdempotencyParams struct {
@@ -48,11 +48,16 @@ type GetListingByIdempotencyParams struct {
 	IdempotencyKey string
 }
 
-func (q *Queries) GetListingByIdempotency(ctx context.Context, arg GetListingByIdempotencyParams) (uuid.UUID, error) {
+type GetListingByIdempotencyRow struct {
+	ID          uuid.UUID
+	RequestHash string
+}
+
+func (q *Queries) GetListingByIdempotency(ctx context.Context, arg GetListingByIdempotencyParams) (GetListingByIdempotencyRow, error) {
 	row := q.db.QueryRow(ctx, getListingByIdempotency, arg.MerchantID, arg.IdempotencyKey)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
+	var i GetListingByIdempotencyRow
+	err := row.Scan(&i.ID, &i.RequestHash)
+	return i, err
 }
 
 const getListingDetail = `-- name: GetListingDetail :one
@@ -159,7 +164,7 @@ func (q *Queries) GetListingDetail(ctx context.Context, arg GetListingDetailPara
 }
 
 const getOwnedListing = `-- name: GetOwnedListing :one
-SELECT l.id, l.merchant_id, l.title, l.description, l.tier, l.unit, l.is_free, l.price_original, l.price, l.stock, l.sold_count, l.halal, l.allergens, l.made_at, l.storage, l.safety_checks, l.safe_until, l.pickup_start, l.pickup_end, l.location, l.video_media_id, l.status, l.idempotency_key, l.created_at, l.updated_at FROM listings l JOIN merchants m ON m.id = l.merchant_id
+SELECT l.id, l.merchant_id, l.title, l.description, l.tier, l.unit, l.is_free, l.price_original, l.price, l.stock, l.sold_count, l.halal, l.allergens, l.made_at, l.storage, l.safety_checks, l.safe_until, l.pickup_start, l.pickup_end, l.location, l.video_media_id, l.status, l.idempotency_key, l.created_at, l.updated_at, l.request_hash FROM listings l JOIN merchants m ON m.id = l.merchant_id
 WHERE l.id = $1 AND m.owner_id = $2 AND l.status <> 'deleted'
 `
 
@@ -197,18 +202,19 @@ func (q *Queries) GetOwnedListing(ctx context.Context, arg GetOwnedListingParams
 		&i.IdempotencyKey,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.RequestHash,
 	)
 	return i, err
 }
 
 const insertListing = `-- name: InsertListing :one
 INSERT INTO listings (merchant_id, title, description, tier, unit, is_free, price_original, price, stock, halal, allergens,
-                      made_at, storage, safety_checks, safe_until, pickup_start, pickup_end, location, video_media_id, idempotency_key)
+                      made_at, storage, safety_checks, safe_until, pickup_start, pickup_end, location, video_media_id, idempotency_key, request_hash)
 SELECT m.id, $1, $2, $3::listing_tier, $4::quantity_unit, $5, $6::int, $7::int, $8,
        coalesce($9::halal_status, m.halal), $10::allergen[],
        $11::timestamptz, $12::storage_method, $13::safety_check[], $14::timestamptz,
-       $15, $16, m.location, $17::uuid, $18
-FROM merchants m WHERE m.id = $19
+       $15, $16, m.location, $17::uuid, $18, $19
+FROM merchants m WHERE m.id = $20
 RETURNING id
 `
 
@@ -231,6 +237,7 @@ type InsertListingParams struct {
 	PickupEnd      pgtype.Timestamptz
 	VideoMediaID   uuid.NullUUID
 	IdempotencyKey string
+	RequestHash    pgtype.Text
 	MerchantID     uuid.UUID
 }
 
@@ -254,6 +261,7 @@ func (q *Queries) InsertListing(ctx context.Context, arg InsertListingParams) (u
 		arg.PickupEnd,
 		arg.VideoMediaID,
 		arg.IdempotencyKey,
+		arg.RequestHash,
 		arg.MerchantID,
 	)
 	var id uuid.UUID
