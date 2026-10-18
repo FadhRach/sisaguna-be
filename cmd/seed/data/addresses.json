@@ -1,0 +1,18 @@
+[
+ {
+  "id": "a1",
+  "label": "Rumah",
+  "full_address": "Jl. Sutera Onyx XII No.30, Kunciran, Kec. Pinang, Kota Tangerang, Banten 15144",
+  "lat": -6.2275,
+  "lng": 106.6544,
+  "note": ""
+ },
+ {
+  "id": "a2",
+  "label": "Kantor",
+  "full_address": "Business Park Kebon Jeruk Ruko AB-6, Meruya Utara, Kembangan, Jakarta Barat 11620",
+  "lat": -6.1931,
+  "lng": 106.7638,
+  "note": "Lantai 2, sebelah lift"
+ }
+]

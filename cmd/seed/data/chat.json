@@ -1,0 +1,110 @@
+[
+ {
+  "id": "c1",
+  "merchant_id": "m1",
+  "from_buyer": true,
+  "text": "Bu, nasi kuningnya masih ada?",
+  "at": {
+   "min": -2910
+  },
+  "listing_id": "l1",
+  "is_read": true,
+  "buyer": "me"
+ },
+ {
+  "id": "c2",
+  "merchant_id": "m1",
+  "from_buyer": false,
+  "text": "Masih ada kak, sampai jam 7 malam ya. Lauknya lengkap.",
+  "at": {
+   "min": -2908
+  },
+  "listing_id": null,
+  "is_read": true,
+  "buyer": "me"
+ },
+ {
+  "id": "c3",
+  "merchant_id": "m1",
+  "from_buyer": true,
+  "text": "Oke bu, saya ambil sore ini. Terima kasih!",
+  "at": {
+   "min": -2907
+  },
+  "listing_id": null,
+  "is_read": true,
+  "buyer": "me"
+ },
+ {
+  "id": "c4",
+  "merchant_id": "m2",
+  "from_buyer": false,
+  "text": "Halo kak, roti gandum pesananmu sudah siap diambil ya. Tunjukkan kode SG-4821 di kasir.",
+  "at": {
+   "min": -50
+  },
+  "listing_id": null,
+  "is_read": false,
+  "buyer": "me"
+ },
+ {
+  "id": "s1",
+  "merchant_id": "m0",
+  "from_buyer": true,
+  "text": "Kak, kue lapisnya masih ada 2 porsi?",
+  "at": {
+   "min": -12
+  },
+  "listing_id": "l10",
+  "is_read": false,
+  "buyer": "Clara T."
+ },
+ {
+  "id": "s2",
+  "merchant_id": "m0",
+  "from_buyer": true,
+  "text": "Bisa diambil jam 5 sore?",
+  "at": {
+   "min": -11
+  },
+  "listing_id": null,
+  "is_read": false,
+  "buyer": "Clara T."
+ },
+ {
+  "id": "s3",
+  "merchant_id": "m0",
+  "from_buyer": true,
+  "text": "Kulit buahnya masih ada? Mau buat komposter RW.",
+  "at": {
+   "min": -180
+  },
+  "listing_id": "l11",
+  "is_read": true,
+  "buyer": "Kebun Warga RW 04"
+ },
+ {
+  "id": "s4",
+  "merchant_id": "m0",
+  "from_buyer": false,
+  "text": "Masih ada kak, sekitar 3 kg. Silakan diambil.",
+  "at": {
+   "min": -175
+  },
+  "listing_id": null,
+  "is_read": true,
+  "buyer": "Kebun Warga RW 04"
+ },
+ {
+  "id": "s5",
+  "merchant_id": "m0",
+  "from_buyer": true,
+  "text": "Siap, makasih kak!",
+  "at": {
+   "min": -176
+  },
+  "listing_id": null,
+  "is_read": true,
+  "buyer": "Kebun Warga RW 04"
+ }
+]

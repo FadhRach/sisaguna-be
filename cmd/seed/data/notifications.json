@@ -1,0 +1,82 @@
+[
+ {
+  "id": "n1",
+  "type": "pickup",
+  "title": "Pickup 30 menit lagi",
+  "body": "Nasi Kuning Sisa Katering di Warung Bu Sari siap diambil sampai 19.00. Jangan sampai kelewat ya!",
+  "at": {
+   "min": -4
+  },
+  "is_read": false
+ },
+ {
+  "id": "n2",
+  "type": "order",
+  "title": "Pesanan siap diambil",
+  "body": "Roti Segar Bakery sudah menyiapkan Roti Gandum Lewat Best Before kamu. Tunjukkan kode SG-4821 saat ambil.",
+  "at": {
+   "min": -52
+  },
+  "is_read": false
+ },
+ {
+  "id": "n3",
+  "type": "merchant",
+  "title": "Warung Bu Sari upload menu baru",
+  "body": "Sayur Sop Sisa Hari Ini, Rp 4.000 dari Rp 15.000. Penyedia yang kamu simpan baru saja menambah makanan.",
+  "at": {
+   "min": -180
+  },
+  "is_read": false
+ },
+ {
+  "id": "n4",
+  "type": "promo",
+  "title": "Hemat ekstra pickup sore ini",
+  "body": "Ambil makanan antara 16.00-18.00 dan dapat potongan tambahan dari penyedia Verified.",
+  "at": {
+   "min": -1560
+  },
+  "is_read": true
+ },
+ {
+  "id": "n5",
+  "type": "order",
+  "title": "Pesanan selesai",
+  "body": "Terima kasih sudah menyelamatkan Donat Glaze Sisa Etalase. Beri rating untuk Roti Segar Bakery?",
+  "at": {
+   "min": -1800
+  },
+  "is_read": true
+ },
+ {
+  "id": "n6",
+  "type": "impact",
+  "title": "Dampakmu minggu ini",
+  "body": "Kamu menyelamatkan 6 porsi makanan dan mencegah 5 kg emisi karbon. Mantap!",
+  "at": {
+   "min": -4320
+  },
+  "is_read": true
+ },
+ {
+  "id": "n7",
+  "type": "merchant",
+  "title": "Peternakan Hijau menerima sisa sayur",
+  "body": "Punya sisa sayur? Peternakan Hijau di Depok menerimanya untuk pakan ternak.",
+  "at": {
+   "min": -5760
+  },
+  "is_read": true
+ },
+ {
+  "id": "n8",
+  "type": "promo",
+  "title": "Selamat datang di SisaGuna",
+  "body": "Selamatkan makanan pertamamu hari ini dan lihat dampaknya di Profil.",
+  "at": {
+   "min": -12960
+  },
+  "is_read": true
+ }
+]

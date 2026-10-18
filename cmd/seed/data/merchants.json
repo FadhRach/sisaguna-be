@@ -1,0 +1,364 @@
+[
+ {
+  "id": "m0",
+  "name": "Dapur Budi",
+  "verified": true,
+  "status": "approved",
+  "location": "Tangerang",
+  "rating": 4.8,
+  "rating_count": 23,
+  "banner": "banner_dapur",
+  "photos": [
+   "kue_lapis",
+   "banner_dapur"
+  ],
+  "about": "Dapur rumahan yang sering kebanjiran pesanan arisan. Sisa yang masih layak dijual murah, sisanya jadi kompos.",
+  "address": "Jl. Sutera Onyx XII No.30, Tangerang",
+  "open_hours": "08.00-20.00",
+  "halal": "unverified",
+  "allergens": [
+   "egg",
+   "milk",
+   "gluten"
+  ],
+  "todays_offer": null,
+  "delivery_available": true,
+  "prep_minutes": 10,
+  "distance_km": 0.3,
+  "total_rescued": 41
+ },
+ {
+  "id": "m1",
+  "name": "Warung Bu Sari",
+  "verified": true,
+  "status": "approved",
+  "location": "Kemang",
+  "rating": 4.9,
+  "rating_count": 212,
+  "banner": "banner_warung2",
+  "photos": [
+   "banner_warung2",
+   "nasi_kuning",
+   "sayur_sop",
+   "pisang_goreng",
+   "banner_warung"
+  ],
+  "about": "Warung masakan rumahan sejak 2009. Tiap sore sisa lauk katering kantor kami bagikan murah lewat SisaGuna.",
+  "address": "Jl. Kemang Raya No. 12, Jakarta Selatan",
+  "open_hours": "07.00-21.00",
+  "halal": "halal_certified",
+  "allergens": [
+   "egg",
+   "peanut",
+   "seafood"
+  ],
+  "todays_offer": "Nasi kuning + sayur sop mulai Rp 4.000 sampai jam 21.00",
+  "delivery_available": true,
+  "prep_minutes": 10,
+  "distance_km": 0.8,
+  "total_rescued": 1284
+ },
+ {
+  "id": "m2",
+  "name": "Roti Segar Bakery",
+  "verified": true,
+  "status": "approved",
+  "location": "Blok M",
+  "rating": 4.7,
+  "rating_count": 158,
+  "banner": "banner_bakery",
+  "photos": [
+   "banner_bakery",
+   "donat",
+   "croissant",
+   "roti_tawar"
+  ],
+  "about": "Bakery kecil di Blok M. Roti yang lewat best before tapi masih lembut dijual 70% lebih murah.",
+  "address": "Jl. Melawai VI No. 3, Blok M",
+  "open_hours": "06.00-20.00",
+  "halal": "halal_certified",
+  "allergens": [
+   "gluten",
+   "milk",
+   "egg"
+  ],
+  "todays_offer": "Semua roti & donat diskon 70% setelah jam 18.00",
+  "delivery_available": true,
+  "prep_minutes": 5,
+  "distance_km": 1.2,
+  "total_rescued": 932
+ },
+ {
+  "id": "m3",
+  "name": "Kantin Pak Budi",
+  "verified": false,
+  "status": "approved",
+  "location": "Cipete",
+  "rating": 4.5,
+  "rating_count": 37,
+  "banner": "banner_kantin",
+  "photos": [
+   "banner_kantin",
+   "nasi_box",
+   "ayam_goreng",
+   "bubur_ayam"
+  ],
+  "about": "Kantin kantor yang sering kelebihan nasi box rapat.",
+  "address": "Jl. Cipete Raya No. 8",
+  "open_hours": "06.30-16.00",
+  "halal": "unverified",
+  "allergens": [
+   "egg",
+   "soy"
+  ],
+  "todays_offer": null,
+  "delivery_available": true,
+  "prep_minutes": 15,
+  "distance_km": 0.5,
+  "total_rescued": 210
+ },
+ {
+  "id": "m4",
+  "name": "Peternakan Hijau",
+  "verified": true,
+  "status": "approved",
+  "location": "Depok",
+  "rating": 4.8,
+  "rating_count": 64,
+  "banner": "banner_farm",
+  "photos": [
+   "banner_farm",
+   "sayur_pakan",
+   "ampas_tahu",
+   "dedak"
+  ],
+  "about": "Kami kumpulkan sisa sayur pasar dan ampas tahu untuk peternak kecil di Depok.",
+  "address": "Jl. Raya Sawangan No. 51, Depok",
+  "open_hours": "05.00-17.00",
+  "halal": "other",
+  "allergens": [
+   "soy"
+  ],
+  "todays_offer": null,
+  "delivery_available": true,
+  "prep_minutes": 20,
+  "distance_km": 5.4,
+  "total_rescued": 3400
+ },
+ {
+  "id": "m5",
+  "name": "Kompos Kita",
+  "verified": true,
+  "status": "approved",
+  "location": "Cilandak",
+  "rating": 4.6,
+  "rating_count": 19,
+  "banner": "banner_kompos",
+  "photos": [
+   "banner_kompos",
+   "kompos_sayur",
+   "ampas_kopi"
+  ],
+  "about": "Bank sampah organik. Bahan kompos sudah dipilah bebas plastik.",
+  "address": "Jl. Cilandak KKO No. 2",
+  "open_hours": "08.00-16.00",
+  "halal": "other",
+  "allergens": [],
+  "todays_offer": null,
+  "delivery_available": false,
+  "prep_minutes": 15,
+  "distance_km": 3.1,
+  "total_rescued": 5120
+ },
+ {
+  "id": "m6",
+  "name": "Dessert Rara",
+  "verified": true,
+  "status": "approved",
+  "location": "Alam Sutera",
+  "rating": 4.9,
+  "rating_count": 88,
+  "banner": "puding_cheesecake",
+  "photos": [
+   "puding_cheesecake",
+   "kue_lapis"
+  ],
+  "about": "Puding cheesecake sistem PO. Bahan dibeli H-1 jadi selalu fresh; sisa PO dijual di sini sebelum lewat 2 hari.",
+  "address": "Jl. Alam Sutera Boulevard No. 21",
+  "open_hours": "10.00-21.00",
+  "halal": "unverified",
+  "allergens": [
+   "milk",
+   "egg",
+   "gluten"
+  ],
+  "todays_offer": "Sisa PO hari ini: beli 2 cup puding, hemat Rp 10.000",
+  "delivery_available": true,
+  "prep_minutes": 5,
+  "distance_km": 0.4,
+  "total_rescued": 310
+ },
+ {
+  "id": "m7",
+  "name": "Bakmi Ahong",
+  "verified": true,
+  "status": "approved",
+  "location": "Kebon Jeruk",
+  "rating": 4.6,
+  "rating_count": 120,
+  "banner": "mie_goreng",
+  "photos": [
+   "mie_goreng"
+  ],
+  "about": "Bakmi dan mie goreng rumahan. Dapur kami non-halal.",
+  "address": "Jl. Kebon Jeruk Raya No. 77",
+  "open_hours": "09.00-21.00",
+  "halal": "non_halal",
+  "allergens": [
+   "soy",
+   "egg",
+   "gluten"
+  ],
+  "todays_offer": null,
+  "delivery_available": true,
+  "prep_minutes": 10,
+  "distance_km": 2.2,
+  "total_rescued": 540
+ },
+ {
+  "id": "m8",
+  "name": "Ayam Bakar Bang Udin",
+  "verified": true,
+  "status": "approved",
+  "location": "Tebet",
+  "rating": 4.7,
+  "rating_count": 301,
+  "banner": "martabak",
+  "photos": [
+   "martabak"
+  ],
+  "about": "Ayam bakar jepit bumbu kecap sejak 2012, dibakar di atas arang. Pesanan yang batal diambil kami jual separuh harga.",
+  "address": "Jl. Tebet Raya No. 40",
+  "open_hours": "10.00-22.00",
+  "halal": "halal_certified",
+  "allergens": [
+   "soy"
+  ],
+  "todays_offer": "Ayam bakar batal ambil diskon 60% mulai jam 20.00",
+  "delivery_available": true,
+  "prep_minutes": 10,
+  "distance_km": 1.8,
+  "total_rescued": 670
+ },
+ {
+  "id": "m9",
+  "name": "Pizza Lab",
+  "verified": true,
+  "status": "approved",
+  "location": "Senopati",
+  "rating": 4.6,
+  "rating_count": 95,
+  "banner": "pizza",
+  "photos": [
+   "pizza"
+  ],
+  "about": "Pizza oven batu. Slice yang tersisa saat tutup dijual murah.",
+  "address": "Jl. Senopati No. 19",
+  "open_hours": "11.00-22.00",
+  "halal": "unverified",
+  "allergens": [
+   "gluten",
+   "milk"
+  ],
+  "todays_offer": null,
+  "delivery_available": true,
+  "prep_minutes": 8,
+  "distance_km": 2.6,
+  "total_rescued": 220
+ },
+ {
+  "id": "m10",
+  "name": "Soto & Sate Pak Gino",
+  "verified": true,
+  "status": "approved",
+  "location": "Rawamangun",
+  "rating": 4.8,
+  "rating_count": 176,
+  "banner": "sate_ayam",
+  "photos": [
+   "sate_ayam",
+   "soto_ayam",
+   "rendang"
+  ],
+  "about": "Soto ayam, sate, dan rendang. Sisa katering kantor kami tawarkan tiap sore.",
+  "address": "Jl. Pemuda No. 88, Rawamangun",
+  "open_hours": "07.00-20.00",
+  "halal": "halal_certified",
+  "allergens": [
+   "peanut",
+   "soy",
+   "egg"
+  ],
+  "todays_offer": "Paket soto + sate sisa katering mulai Rp 6.000",
+  "delivery_available": true,
+  "prep_minutes": 10,
+  "distance_km": 1.5,
+  "total_rescued": 860
+ },
+ {
+  "id": "m11",
+  "name": "Jajanan Pasar Bu Ning",
+  "verified": true,
+  "status": "approved",
+  "location": "Pasar Minggu",
+  "rating": 4.9,
+  "rating_count": 240,
+  "banner": "klepon",
+  "photos": [
+   "klepon",
+   "onde_onde",
+   "risoles",
+   "bolu_pandan"
+  ],
+  "about": "Kue basah buatan subuh. Yang tidak habis di pasar kami tawarkan sebelum sore.",
+  "address": "Pasar Minggu Blok B No. 12",
+  "open_hours": "05.00-15.00",
+  "halal": "halal_certified",
+  "allergens": [
+   "gluten",
+   "egg",
+   "milk",
+   "sesame"
+  ],
+  "todays_offer": "Kue basah 3 macam cuma Rp 5.000",
+  "delivery_available": true,
+  "prep_minutes": 5,
+  "distance_km": 2.0,
+  "total_rescued": 1450
+ },
+ {
+  "id": "m12",
+  "name": "Segar Juice & Salad",
+  "verified": false,
+  "status": "approved",
+  "location": "Kuningan",
+  "rating": 4.4,
+  "rating_count": 41,
+  "banner": "salad_buah",
+  "photos": [
+   "salad_buah"
+  ],
+  "about": "Kedai jus dan salad buah. Kulit buah dan ampas teh kami pisahkan untuk kompos.",
+  "address": "Jl. Rasuna Said Kav. 5",
+  "open_hours": "08.00-20.00",
+  "halal": "unverified",
+  "allergens": [
+   "milk"
+  ],
+  "todays_offer": null,
+  "delivery_available": true,
+  "prep_minutes": 5,
+  "distance_km": 3.4,
+  "total_rescued": 190
+ }
+]

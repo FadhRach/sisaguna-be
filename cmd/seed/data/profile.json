@@ -1,0 +1,13 @@
+{
+ "name": "Budi Santoso",
+ "email": "budi.santoso@gmail.com",
+ "phone": "81234567890",
+ "location": "Tangerang, Banten",
+ "member_since": "2026-01",
+ "impact": {
+  "portions": 34,
+  "compost_kg": 3,
+  "carbon_kg": 32,
+  "saved_rupiah": 245000
+ }
+}

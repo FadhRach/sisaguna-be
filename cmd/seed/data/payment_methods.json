@@ -1,0 +1,20 @@
+[
+ {
+  "id": "p-qris",
+  "kind": "qris",
+  "label": "QRIS",
+  "detail": "Bayar pakai aplikasi bank atau e-wallet apa pun"
+ },
+ {
+  "id": "p-gopay",
+  "kind": "gopay",
+  "label": "GoPay",
+  "detail": "0812 •••• 7890"
+ },
+ {
+  "id": "p-cash",
+  "kind": "cash",
+  "label": "Bayar saat ambil",
+  "detail": "Tunai langsung ke penyedia"
+ }
+]

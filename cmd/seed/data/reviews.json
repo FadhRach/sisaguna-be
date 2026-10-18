@@ -1,0 +1,915 @@
+[
+ {
+  "id": "r1",
+  "merchant_id": "m1",
+  "author": "Dinda P.",
+  "stars": 5,
+  "comment": "Nasi kuningnya masih hangat pas diambil, porsinya banyak banget. Bu Sari ramah!",
+  "at": {
+   "min": -1440
+  },
+  "photos": [
+   "nasi_kuning"
+  ],
+  "item_title": "Nasi Kuning Sisa Katering",
+  "tags": [
+   "Makanan enak",
+   "Porsi pas"
+  ]
+ },
+ {
+  "id": "r2",
+  "merchant_id": "m1",
+  "author": "Rizky A.",
+  "stars": 5,
+  "comment": "Sayur sopnya seger, kuahnya dipisah jadi nggak tumpah.",
+  "at": {
+   "min": -4320
+  },
+  "photos": [
+   "sayur_sop"
+  ],
+  "item_title": "Sayur Sop Sisa Hari Ini",
+  "tags": [
+   "Kemasan rapi"
+  ]
+ },
+ {
+  "id": "r3",
+  "merchant_id": "m1",
+  "author": "Sekar W.",
+  "stars": 4,
+  "comment": "Enak, cuma antrinya agak lama pas jam pulang kantor.",
+  "at": {
+   "min": -8640
+  },
+  "photos": [],
+  "item_title": "Pisang Goreng Tepung",
+  "tags": []
+ },
+ {
+  "id": "r4",
+  "merchant_id": "m2",
+  "author": "Andi K.",
+  "stars": 5,
+  "comment": "Donatnya masih empuk, beda tipis sama yang di etalase. Mantap buat sarapan anak-anak.",
+  "at": {
+   "min": -2880
+  },
+  "photos": [
+   "donat"
+  ],
+  "item_title": "Donat Glaze Sisa Etalase",
+  "tags": [
+   "Makanan enak",
+   "Hemat"
+  ]
+ },
+ {
+  "id": "r5",
+  "merchant_id": "m2",
+  "author": "Maya L.",
+  "stars": 4,
+  "comment": "Roti gandumnya masih oke diiris lalu dipanggang. Croissant agak lembek tapi wajar.",
+  "at": {
+   "min": -7200
+  },
+  "photos": [
+   "roti_tawar",
+   "croissant"
+  ],
+  "item_title": "Roti Gandum Lewat Best Before",
+  "tags": []
+ },
+ {
+  "id": "r6",
+  "merchant_id": "m3",
+  "author": "Fajar H.",
+  "stars": 4,
+  "comment": "Nasi box gratis dan masih layak, terima kasih kantin!",
+  "at": {
+   "min": -2880
+  },
+  "photos": [
+   "nasi_box"
+  ],
+  "item_title": "Nasi Box Rapat Berlebih",
+  "tags": []
+ },
+ {
+  "id": "r7",
+  "merchant_id": "m3",
+  "author": "Nadia S.",
+  "stars": 3,
+  "comment": "Ayamnya enak tapi agak dingin. Lebih baik dihangatkan dulu.",
+  "at": {
+   "min": -11520
+  },
+  "photos": [],
+  "item_title": "Ayam Goreng Crispy",
+  "tags": []
+ },
+ {
+  "id": "r8",
+  "merchant_id": "m4",
+  "author": "Pak Darto",
+  "stars": 5,
+  "comment": "Sayurnya sudah bersih dari plastik, kambing saya lahap. Langganan tiap minggu.",
+  "at": {
+   "min": -1440
+  },
+  "photos": [
+   "sayur_pakan"
+  ],
+  "item_title": "Sayur Layu Pasar untuk Pakan",
+  "tags": [
+   "Bersih"
+  ]
+ },
+ {
+  "id": "r9",
+  "merchant_id": "m4",
+  "author": "Bu Wati",
+  "stars": 5,
+  "comment": "Ampas tahu masih segar, nggak bau asam.",
+  "at": {
+   "min": -5760
+  },
+  "photos": [
+   "ampas_tahu"
+  ],
+  "item_title": "Ampas Tahu Segar",
+  "tags": []
+ },
+ {
+  "id": "r10",
+  "merchant_id": "m5",
+  "author": "Komunitas Kebun Kita",
+  "stars": 5,
+  "comment": "Ampas kopinya banyak dan kering. Cocok buat campuran kompos.",
+  "at": {
+   "min": -4320
+  },
+  "photos": [
+   "ampas_kopi"
+  ],
+  "item_title": "Ampas Kopi untuk Kompos",
+  "tags": []
+ },
+ {
+  "id": "r11",
+  "merchant_id": "m6",
+  "author": "Clara T.",
+  "stars": 5,
+  "comment": "Pudingnya lembut banget, saus stroberinya seger. Masih dingin pas diambil.",
+  "at": {
+   "min": -1440
+  },
+  "photos": [
+   "puding_cheesecake"
+  ],
+  "item_title": "Puding Cheesecake Sisa PO",
+  "tags": [
+   "Makanan enak",
+   "Masih fresh"
+  ]
+ },
+ {
+  "id": "r12",
+  "merchant_id": "m6",
+  "author": "Bayu R.",
+  "stars": 4,
+  "comment": "Yang H+1 teksturnya memang lebih padat, tapi rasanya tetap enak. Jujur di deskripsi, jadi nggak kaget.",
+  "at": {
+   "min": -2880
+  },
+  "photos": [],
+  "item_title": "Puding Cheesecake H+1 (Mini)",
+  "tags": []
+ },
+ {
+  "id": "r13",
+  "merchant_id": "m7",
+  "author": "Kevin S.",
+  "stars": 5,
+  "comment": "Mie gorengnya porsi kuli, harga cuma 7 ribu.",
+  "at": {
+   "min": -2880
+  },
+  "photos": [
+   "mie_goreng"
+  ],
+  "item_title": "Mie Goreng Spesial",
+  "tags": []
+ },
+ {
+  "id": "r14",
+  "merchant_id": "m0",
+  "author": "Tante Lina",
+  "stars": 5,
+  "comment": "Kue lapisnya legit, persis buatan rumah.",
+  "at": {
+   "min": -12960
+  },
+  "photos": [
+   "kue_lapis"
+  ],
+  "item_title": "Kue Lapis Sisa Arisan",
+  "tags": []
+ },
+ {
+  "id": "r15",
+  "merchant_id": "m0",
+  "author": "Rizky A.",
+  "stars": 5,
+  "comment": "Potongannya rapi dan masih wangi mentega. Murah banget untuk lapis legit.",
+  "at": {
+   "min": -4320
+  },
+  "photos": [],
+  "item_title": "Kue Lapis Sisa Arisan",
+  "tags": [
+   "Makanan enak",
+   "Hemat"
+  ]
+ },
+ {
+  "id": "r16",
+  "merchant_id": "m0",
+  "author": "Kebun Warga RW 04",
+  "stars": 5,
+  "comment": "Kulit buahnya sudah dipilah, tinggal masuk komposter.",
+  "at": {
+   "min": -7200
+  },
+  "photos": [
+   "kulit_buah"
+  ],
+  "item_title": "Kulit Buah untuk Kompos",
+  "tags": [
+   "Bersih"
+  ]
+ },
+ {
+  "id": "r17",
+  "merchant_id": "m0",
+  "author": "Dinda P.",
+  "stars": 4,
+  "comment": "Enak, cuma saya datang agak telat jadi tinggal sedikit.",
+  "at": {
+   "min": -17280
+  },
+  "photos": [],
+  "item_title": "Kue Lapis Sisa Arisan",
+  "tags": []
+ },
+ {
+  "id": "r18",
+  "merchant_id": "m1",
+  "author": "Hendra G.",
+  "stars": 5,
+  "comment": "Gado-gadonya bumbu kacangnya kental, porsinya kenyang.",
+  "at": {
+   "min": -2880
+  },
+  "photos": [
+   "gado_gado"
+  ],
+  "item_title": "Gado-gado Sisa Katering",
+  "tags": [
+   "Porsi banyak"
+  ]
+ },
+ {
+  "id": "r19",
+  "merchant_id": "m1",
+  "author": "Lestari M.",
+  "stars": 5,
+  "comment": "Pisang gorengnya masih renyah walau sudah sore.",
+  "at": {
+   "min": -5760
+  },
+  "photos": [
+   "pisang_goreng"
+  ],
+  "item_title": "Pisang Goreng Tepung",
+  "tags": [
+   "Makanan enak"
+  ]
+ },
+ {
+  "id": "r20",
+  "merchant_id": "m1",
+  "author": "Yoga P.",
+  "stars": 4,
+  "comment": "Nasi kuningnya enak, lauknya lengkap. Sambalnya kurang pedas buat saya.",
+  "at": {
+   "min": -10080
+  },
+  "photos": [],
+  "item_title": "Nasi Kuning Sisa Katering",
+  "tags": []
+ },
+ {
+  "id": "r21",
+  "merchant_id": "m1",
+  "author": "Ani S.",
+  "stars": 5,
+  "comment": "Langganan tiap sore. Bu Sari selalu ingat nama saya.",
+  "at": {
+   "min": -14400
+  },
+  "photos": [],
+  "item_title": "Sayur Sop Sisa Hari Ini",
+  "tags": [
+   "Ramah"
+  ]
+ },
+ {
+  "id": "r22",
+  "merchant_id": "m2",
+  "author": "Putri N.",
+  "stars": 5,
+  "comment": "Brownies pinggirannya justru favorit saya, fudgy banget.",
+  "at": {
+   "min": -1440
+  },
+  "photos": [
+   "brownies"
+  ],
+  "item_title": "Brownies Panggang Potong",
+  "tags": [
+   "Makanan enak"
+  ]
+ },
+ {
+  "id": "r23",
+  "merchant_id": "m2",
+  "author": "Arif B.",
+  "stars": 4,
+  "comment": "Croissant sandwich-nya masih dingin dari chiller, enak dipanaskan sebentar.",
+  "at": {
+   "min": -4320
+  },
+  "photos": [
+   "croissant"
+  ],
+  "item_title": "Croissant Sandwich Smoked Beef",
+  "tags": []
+ },
+ {
+  "id": "r24",
+  "merchant_id": "m2",
+  "author": "Pak Slamet",
+  "stars": 5,
+  "comment": "Remah rotinya kering dan bersih, ayam saya suka.",
+  "at": {
+   "min": -8640
+  },
+  "photos": [
+   "roti_kering_pakan"
+  ],
+  "item_title": "Remah Roti Kering untuk Pakan",
+  "tags": [
+   "Bersih"
+  ]
+ },
+ {
+  "id": "r25",
+  "merchant_id": "m2",
+  "author": "Wulan K.",
+  "stars": 3,
+  "comment": "Donatnya enak tapi glaze-nya agak meleleh di perjalanan.",
+  "at": {
+   "min": -12960
+  },
+  "photos": [],
+  "item_title": "Donat Glaze Sisa Etalase",
+  "tags": [
+   "Kemasan rapi"
+  ]
+ },
+ {
+  "id": "r26",
+  "merchant_id": "m3",
+  "author": "Galih R.",
+  "stars": 5,
+  "comment": "Nasi gorengnya masih hangat, telurnya setengah matang pas.",
+  "at": {
+   "min": -1440
+  },
+  "photos": [
+   "nasi_goreng"
+  ],
+  "item_title": "Nasi Goreng Telur Mata Sapi",
+  "tags": [
+   "Makanan enak"
+  ]
+ },
+ {
+  "id": "r27",
+  "merchant_id": "m3",
+  "author": "Siti A.",
+  "stars": 4,
+  "comment": "Bubur ayamnya enak, kerupuk dipisah jadi tetap renyah.",
+  "at": {
+   "min": -5760
+  },
+  "photos": [
+   "bubur_ayam"
+  ],
+  "item_title": "Bubur Ayam Komplit",
+  "tags": [
+   "Kemasan rapi"
+  ]
+ },
+ {
+  "id": "r28",
+  "merchant_id": "m3",
+  "author": "Bima T.",
+  "stars": 4,
+  "comment": "Bakso tahunya mantap. Kuah dipisah, aman dibawa pulang.",
+  "at": {
+   "min": -7200
+  },
+  "photos": [],
+  "item_title": "Bakso Tahu Kuah",
+  "tags": []
+ },
+ {
+  "id": "r29",
+  "merchant_id": "m4",
+  "author": "Kelompok Ternak Sawangan",
+  "stars": 5,
+  "comment": "Dedaknya kering, tidak apek. Harga jauh di bawah pasar.",
+  "at": {
+   "min": -2880
+  },
+  "photos": [
+   "dedak"
+  ],
+  "item_title": "Dedak Padi Sisa Penggilingan",
+  "tags": [
+   "Hemat"
+  ]
+ },
+ {
+  "id": "r30",
+  "merchant_id": "m4",
+  "author": "Mas Joko",
+  "stars": 4,
+  "comment": "Sayurnya banyak, tapi tetap harus dipilah lagi sedikit.",
+  "at": {
+   "min": -8640
+  },
+  "photos": [],
+  "item_title": "Sayur Layu Pasar untuk Pakan",
+  "tags": []
+ },
+ {
+  "id": "r31",
+  "merchant_id": "m4",
+  "author": "Bu Endang",
+  "stars": 5,
+  "comment": "Ampas tahunya gratis dan masih segar. Terima kasih!",
+  "at": {
+   "min": -12960
+  },
+  "photos": [],
+  "item_title": "Ampas Tahu Segar",
+  "tags": [
+   "Ramah"
+  ]
+ },
+ {
+  "id": "r32",
+  "merchant_id": "m5",
+  "author": "Rina Urban Farm",
+  "stars": 5,
+  "comment": "Daun keringnya pas untuk menyeimbangkan sisa dapur.",
+  "at": {
+   "min": -2880
+  },
+  "photos": [
+   "daun_kering"
+  ],
+  "item_title": "Daun Kering untuk Kompos",
+  "tags": [
+   "Bersih"
+  ]
+ },
+ {
+  "id": "r33",
+  "merchant_id": "m5",
+  "author": "Dimas H.",
+  "stars": 4,
+  "comment": "Bahan kompos bebas plastik, tapi lokasi agak susah dicari.",
+  "at": {
+   "min": -7200
+  },
+  "photos": [],
+  "item_title": "Sisa Sayur & Buah untuk Kompos",
+  "tags": []
+ },
+ {
+  "id": "r34",
+  "merchant_id": "m5",
+  "author": "Ibu PKK Cilandak",
+  "stars": 5,
+  "comment": "Ampas kopinya banyak, tanaman cabai kami subur.",
+  "at": {
+   "min": -15840
+  },
+  "photos": [
+   "ampas_kopi"
+  ],
+  "item_title": "Ampas Kopi untuk Kompos",
+  "tags": [
+   "Ramah"
+  ]
+ },
+ {
+  "id": "r35",
+  "merchant_id": "m6",
+  "author": "Nabila F.",
+  "stars": 5,
+  "comment": "Peach-nya segar, whipped cream-nya tidak terlalu manis.",
+  "at": {
+   "min": -4320
+  },
+  "photos": [
+   "puding_cheesecake"
+  ],
+  "item_title": "Puding Cheesecake Sisa PO",
+  "tags": [
+   "Masih fresh"
+  ]
+ },
+ {
+  "id": "r36",
+  "merchant_id": "m6",
+  "author": "Teddy W.",
+  "stars": 5,
+  "comment": "Kak Rara ramah, pudingnya dikemas rapi pakai ice gel.",
+  "at": {
+   "min": -8640
+  },
+  "photos": [],
+  "item_title": "Puding Cheesecake Sisa PO",
+  "tags": [
+   "Ramah",
+   "Kemasan rapi"
+  ]
+ },
+ {
+  "id": "r37",
+  "merchant_id": "m6",
+  "author": "Grace L.",
+  "stars": 4,
+  "comment": "Yang mini cocok buat camilan, sesuai deskripsi.",
+  "at": {
+   "min": -14400
+  },
+  "photos": [],
+  "item_title": "Puding Cheesecake H+1 (Mini)",
+  "tags": []
+ },
+ {
+  "id": "r38",
+  "merchant_id": "m7",
+  "author": "Hans W.",
+  "stars": 5,
+  "comment": "Bumbu mie gorengnya khas rumahan, porsinya besar.",
+  "at": {
+   "min": -5760
+  },
+  "photos": [],
+  "item_title": "Mie Goreng Spesial",
+  "tags": [
+   "Porsi banyak"
+  ]
+ },
+ {
+  "id": "r39",
+  "merchant_id": "m7",
+  "author": "Melisa C.",
+  "stars": 4,
+  "comment": "Enak, tinggal dipanaskan sebentar di wajan.",
+  "at": {
+   "min": -10080
+  },
+  "photos": [],
+  "item_title": "Mie Goreng Spesial",
+  "tags": []
+ },
+ {
+  "id": "r40",
+  "merchant_id": "m7",
+  "author": "Andre S.",
+  "stars": 4,
+  "comment": "Label non-halal jelas di halaman toko, jadi tidak salah beli. Rasanya mantap.",
+  "at": {
+   "min": -18720
+  },
+  "photos": [],
+  "item_title": "Mie Goreng Spesial",
+  "tags": []
+ },
+ {
+  "id": "r41",
+  "merchant_id": "m8",
+  "author": "Fikri Z.",
+  "stars": 5,
+  "comment": "Ayam bakarnya wangi arang, bumbunya meresap sampai dalam.",
+  "at": {
+   "min": -1440
+  },
+  "photos": [
+   "martabak"
+  ],
+  "item_title": "Ayam Bakar Jepit (4 potong)",
+  "tags": [
+   "Makanan enak"
+  ]
+ },
+ {
+  "id": "r42",
+  "merchant_id": "m8",
+  "author": "Rosa D.",
+  "stars": 5,
+  "comment": "Empat potong cuma 18 ribu. Sambal dan lalapannya dipisah, rapi.",
+  "at": {
+   "min": -4320
+  },
+  "photos": [],
+  "item_title": "Ayam Bakar Jepit (4 potong)",
+  "tags": [
+   "Hemat",
+   "Kemasan rapi"
+  ]
+ },
+ {
+  "id": "r43",
+  "merchant_id": "m8",
+  "author": "Bang Ucok",
+  "stars": 4,
+  "comment": "Enak, tapi harus antre sebentar karena warung lagi ramai.",
+  "at": {
+   "min": -8640
+  },
+  "photos": [],
+  "item_title": "Ayam Bakar Jepit (4 potong)",
+  "tags": []
+ },
+ {
+  "id": "r44",
+  "merchant_id": "m8",
+  "author": "Lia K.",
+  "stars": 5,
+  "comment": "Pesan lewat GoSend, sampai masih hangat.",
+  "at": {
+   "min": -12960
+  },
+  "photos": [],
+  "item_title": "Ayam Bakar Jepit (4 potong)",
+  "tags": [
+   "Tepat waktu"
+  ]
+ },
+ {
+  "id": "r45",
+  "merchant_id": "m9",
+  "author": "Kevin S.",
+  "stars": 5,
+  "comment": "Pizzanya tinggal dipanaskan di oven, rasanya hampir seperti baru.",
+  "at": {
+   "min": -2880
+  },
+  "photos": [
+   "pizza"
+  ],
+  "item_title": "Pizza Pepperoni Jamur (2 slice)",
+  "tags": [
+   "Makanan enak"
+  ]
+ },
+ {
+  "id": "r46",
+  "merchant_id": "m9",
+  "author": "Tasya R.",
+  "stars": 4,
+  "comment": "Topping jamurnya banyak. Pinggirannya sedikit keras.",
+  "at": {
+   "min": -7200
+  },
+  "photos": [],
+  "item_title": "Pizza Pepperoni Jamur (2 slice)",
+  "tags": []
+ },
+ {
+  "id": "r47",
+  "merchant_id": "m9",
+  "author": "Dewa A.",
+  "stars": 4,
+  "comment": "Harga separuh, worth it untuk makan malam.",
+  "at": {
+   "min": -11520
+  },
+  "photos": [],
+  "item_title": "Pizza Pepperoni Jamur (2 slice)",
+  "tags": [
+   "Hemat"
+  ]
+ },
+ {
+  "id": "r48",
+  "merchant_id": "m10",
+  "author": "Pak Harun",
+  "stars": 5,
+  "comment": "Rendangnya empuk, bumbu keringnya mantap.",
+  "at": {
+   "min": -1440
+  },
+  "photos": [
+   "rendang"
+  ],
+  "item_title": "Rendang Daging (2 potong)",
+  "tags": [
+   "Makanan enak"
+  ]
+ },
+ {
+  "id": "r49",
+  "merchant_id": "m10",
+  "author": "Sari W.",
+  "stars": 5,
+  "comment": "Soto santannya gurih, kuah dan isi dipisah jadi tidak lembek.",
+  "at": {
+   "min": -4320
+  },
+  "photos": [
+   "soto_ayam"
+  ],
+  "item_title": "Soto Ayam Kuah Santan",
+  "tags": [
+   "Kemasan rapi"
+  ]
+ },
+ {
+  "id": "r50",
+  "merchant_id": "m10",
+  "author": "Eko P.",
+  "stars": 4,
+  "comment": "Sate 10 tusuk dengan bumbu kacang yang banyak. Lontongnya beli terpisah.",
+  "at": {
+   "min": -7200
+  },
+  "photos": [],
+  "item_title": "Sate Ayam 10 Tusuk",
+  "tags": []
+ },
+ {
+  "id": "r51",
+  "merchant_id": "m10",
+  "author": "Mira H.",
+  "stars": 5,
+  "comment": "Pak Gino ramah, selalu tambah bawang goreng.",
+  "at": {
+   "min": -14400
+  },
+  "photos": [],
+  "item_title": "Soto Ayam Kuah Santan",
+  "tags": [
+   "Ramah"
+  ]
+ },
+ {
+  "id": "r52",
+  "merchant_id": "m11",
+  "author": "Ratna S.",
+  "stars": 5,
+  "comment": "Klepon gula merahnya lumer, masih kenyal.",
+  "at": {
+   "min": -1440
+  },
+  "photos": [
+   "klepon"
+  ],
+  "item_title": "Klepon Gula Merah (isi 10)",
+  "tags": [
+   "Makanan enak",
+   "Masih fresh"
+  ]
+ },
+ {
+  "id": "r53",
+  "merchant_id": "m11",
+  "author": "Ahmad F.",
+  "stars": 5,
+  "comment": "Bolu pandannya lembut, setengah loyang cuma 12 ribu.",
+  "at": {
+   "min": -2880
+  },
+  "photos": [
+   "bolu_pandan"
+  ],
+  "item_title": "Bolu Pandan Setengah Loyang",
+  "tags": [
+   "Hemat"
+  ]
+ },
+ {
+  "id": "r54",
+  "merchant_id": "m11",
+  "author": "Yuni L.",
+  "stars": 4,
+  "comment": "Risolesnya enak, sebaiknya dihangatkan dulu.",
+  "at": {
+   "min": -5760
+  },
+  "photos": [
+   "risoles"
+  ],
+  "item_title": "Risoles Ragout (isi 5)",
+  "tags": []
+ },
+ {
+  "id": "r55",
+  "merchant_id": "m11",
+  "author": "Pak Rahmat",
+  "stars": 5,
+  "comment": "Ampas kelapanya masih segar, bebek saya lahap.",
+  "at": {
+   "min": -8640
+  },
+  "photos": [],
+  "item_title": "Ampas Kelapa Parut",
+  "tags": [
+   "Bersih"
+  ]
+ },
+ {
+  "id": "r56",
+  "merchant_id": "m11",
+  "author": "Citra D.",
+  "stars": 5,
+  "comment": "Onde-ondenya renyah dan isinya penuh.",
+  "at": {
+   "min": -11520
+  },
+  "photos": [
+   "onde_onde"
+  ],
+  "item_title": "Onde-onde Wijen (isi 6)",
+  "tags": [
+   "Makanan enak"
+  ]
+ },
+ {
+  "id": "r57",
+  "merchant_id": "m12",
+  "author": "Laras P.",
+  "stars": 4,
+  "comment": "Salad buahnya segar dan dingin. Porsinya pas untuk satu orang.",
+  "at": {
+   "min": -2880
+  },
+  "photos": [
+   "salad_buah"
+  ],
+  "item_title": "Salad Buah Segar",
+  "tags": [
+   "Porsi pas"
+  ]
+ },
+ {
+  "id": "r58",
+  "merchant_id": "m12",
+  "author": "Kebun Atap Kuningan",
+  "stars": 5,
+  "comment": "Kulit pisang dan ampas tehnya sudah dipisah rapi. Mantap untuk kompos.",
+  "at": {
+   "min": -7200
+  },
+  "photos": [],
+  "item_title": "Kulit Pisang untuk Kompos",
+  "tags": [
+   "Bersih"
+  ]
+ },
+ {
+  "id": "r59",
+  "merchant_id": "m12",
+  "author": "Bayu R.",
+  "stars": 3,
+  "comment": "Saladnya enak, tapi saya harus menunggu karena kedai sedang ramai.",
+  "at": {
+   "min": -12960
+  },
+  "photos": [],
+  "item_title": "Salad Buah Segar",
+  "tags": [
+   "Harus menunggu lama"
+  ]
+ }
+]

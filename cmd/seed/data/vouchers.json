@@ -1,0 +1,87 @@
+[
+ {
+  "code": "HEMAT5K",
+  "title": "Potongan Rp 5.000",
+  "description": "Min. belanja Rp 15.000",
+  "percent_off": null,
+  "flat_off": 5000,
+  "max_discount": null,
+  "min_spend": 15000,
+  "expires": {
+   "min": 4320
+  },
+  "image": "nasi_box",
+  "accent": 4283278892,
+  "terms": [
+   "Minimum belanja Rp 15.000 (sebelum ongkir).",
+   "Berlaku untuk pickup maupun delivery.",
+   "Satu voucher per pesanan, tidak bisa digabung voucher lain.",
+   "Tidak berlaku untuk listing gratis.",
+   "Berlaku sampai tanggal kedaluwarsa pukul 23.59 WIB."
+  ],
+  "applies_to": "Semua makanan siap santap"
+ },
+ {
+  "code": "SELAMAT20",
+  "title": "Diskon 20%",
+  "description": "Maks. Rp 8.000 · tanpa minimum",
+  "percent_off": 20,
+  "flat_off": null,
+  "max_discount": 8000,
+  "min_spend": 0,
+  "expires": {
+   "min": 10080
+  },
+  "image": "donat",
+  "accent": 4290785386,
+  "terms": [
+   "Diskon 20% dari subtotal, maksimal Rp 8.000.",
+   "Tanpa minimum belanja.",
+   "Khusus kategori roti, kue, dan dessert dari mitra terverifikasi.",
+   "Bisa dipakai 2× per akun selama periode promo."
+  ],
+  "applies_to": "Roti, kue & dessert"
+ },
+ {
+  "code": "PERTAMA",
+  "title": "Pesanan pertama 50%",
+  "description": "Maks. Rp 10.000 · min. Rp 10.000",
+  "percent_off": 50,
+  "flat_off": null,
+  "max_discount": 10000,
+  "min_spend": 10000,
+  "expires": {
+   "min": 20160
+  },
+  "image": "nasi_kuning",
+  "accent": 4290008843,
+  "terms": [
+   "Khusus pengguna yang belum pernah menyelesaikan pesanan.",
+   "Diskon 50%, maksimal Rp 10.000; minimum belanja Rp 10.000.",
+   "Hanya untuk pembayaran QRIS atau e-wallet.",
+   "Pesanan yang dibatalkan mengembalikan kuota voucher."
+  ],
+  "applies_to": "Semua makanan siap santap"
+ },
+ {
+  "code": "PAKAN10",
+  "title": "Pakan ternak hemat 10%",
+  "description": "Min. 5 kg · maks. Rp 5.000",
+  "percent_off": 10,
+  "flat_off": null,
+  "max_discount": 5000,
+  "min_spend": 10000,
+  "expires": {
+   "min": 14400
+  },
+  "image": "sayur_pakan",
+  "accent": 4280119205,
+  "terms": [
+   "Berlaku untuk kategori pakan ternak dan kompos.",
+   "Minimum pembelian setara 5 kg atau Rp 10.000.",
+   "Diskon maksimal Rp 5.000 per pesanan.",
+   "Khusus pickup mandiri."
+  ],
+  "applies_to": "Pakan ternak & kompos"
+ }
+]
