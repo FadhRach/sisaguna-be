@@ -1,9 +1,9 @@
 # SisaGuna Backend
 
 REST API dan server realtime untuk SisaGuna, marketplace makanan berlebih dari UMKM kuliner.
-Go (Gin) + Postgres/PostGIS, dijalankan di satu VPS lewat Docker Compose. kontrak API: [`api/openapi.yaml`](./api/openapi.yaml).
+Go (Gin) + Postgres/PostGIS, dijalankan di satu VPS lewat Docker Compose. API: [`api/openapi.yaml`](./api/openapi.yaml).
 
-## Prasyarat
+## Requirements
 
 Go 1.27+, Docker, [`migrate`](https://github.com/golang-migrate/migrate) CLI, dan `sqlc`
 (`go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest`).
