@@ -2,7 +2,7 @@
 
 REST API dan server realtime untuk SisaGuna, marketplace makanan berlebih dari UMKM kuliner.
 Go (Gin) + Postgres/PostGIS, dijalankan di satu VPS lewat Docker Compose. Aturan proyek dan
-status milestone ada di [`CLAUDE.md`](./CLAUDE.md); kontrak API di [`api/openapi.yaml`](./api/openapi.yaml).
+status milestone ada di [`CLAUDE.md`](./CLAUDE.md), kontrak API di [`api/openapi.yaml`](./api/openapi.yaml).
 
 ## Prasyarat
 
